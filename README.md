@@ -13,6 +13,8 @@ Below is detailed documentation for working with OAuth Common, but further infor
 | AuditEventNamePrefix | Yes | - | The audit event name prefix | `IPV_HMRC_RECORD_CHECK_CRI` |
 | AuditTxmaStackName | No | `txma-infrastructure` | The stack containing the TXMA infrastructure | `txma-infrastructure` |
 | BuildNotificationStackName | No | `build-notifications` | The stack containing the topic to publish notification and sns alerts | `build-notifications` |
+| CommonLambdasStackName | No | `""` | For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration. | `common-cri-api` |
+| CommonLambdasUsesCMK | No | `false` | AFor migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration. | `true` |
 | CSLSDestinationArn | No | `none` | ARN of the CSLSEGRESS destination | `arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2` |
 | CriIdentifier | Yes | - | The unique credential issuer identifier | `di-ipv-cri-check-hmrc-api` |
 | CriAudience | Yes | - | Audience for the CRI | `https://review-hc.dev.account.gov.uk` |
@@ -114,3 +116,28 @@ NOTE: The common-lambda stack has an extra `/pre-merge-create-auth-code` endpoin
 Run `detect-secrets scan --baseline .secrets.baseline` to check for potential leaked secrets.
 
 Use the keyword and secret exclusion lists in the baseline file to prevent the utility from flagging up specific strings.
+
+## Testing with localdev CRI stacks
+
+Run sam build and package, authenticating with the dev AWS account for that CRI.
+
+The latter command uploads the built code to an S3 bucket in that account and creates a new template locally that references the uploaded code
+
+NB: for the package step, `--output-template-file` should be set with the name to use for the packaged template, and the `--resolve-s3` switch should be enabled (this creates or reuses an S3 bucket to which the SAM artifacts are pushed)
+
+```sh
+sam build -t infrastructure/template.yaml
+sam package --resolve-s3 --output-template-file packaged-template.yaml
+```
+
+`packaged-template.yaml` is added to the `.gitignore`, so using that filename will help avoid it being included in a commit accidentally.
+
+Change the CRI template, passing a string file path leading to the packaged template instead of the object containing ApplicationId and SemanticVersion
+
+```yaml
+    - Location:
+    -   ApplicationId: arn:aws:serverlessrepo:eu-west-2:667736788427:applications/di-ipv-cri-oauth-common
+    -   SemanticVersion: 0.4.0
+    + Location: ../../ipv-cri-oauth-common/packaged-template.yaml
+```
+Deploy a ‘localdev’ stack for that CRI in the same way as usual.

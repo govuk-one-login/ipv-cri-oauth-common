@@ -42,6 +42,8 @@ build
 # aws sam deploy ignores
 .aws-sam
 
+packaged-template.yaml
+
 # mac
 .DS_Store
 
