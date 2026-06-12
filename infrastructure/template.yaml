@@ -130,6 +130,10 @@ Parameters:
     Type: String
     Description: The ARN of the permissions boundary to apply when creating IAM roles
     Default: "none"
+  VpcStackName:
+    Type: String
+    Description: The name of the VPC stack
+    Default: "cri-vpc"
 
 Mappings:
   EnvConfig:
@@ -193,8 +197,8 @@ Globals:
     VpcConfig:
       SecurityGroupIds: !If
         - IsDevPlatformDeploy
-        - [!ImportValue cri-vpc-AWSServicesEndpointSecurityGroupId]
-        - [!ImportValue cri-vpc-LambdaSecurityGroup]
+        - [Fn::ImportValue: !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"]
+        - [Fn::ImportValue: !Sub "${VpcStackName}-LambdaSecurityGroup"]
     PermissionsBoundary: !If
       - IsPermissionsBoundaryEnabled
       - !Ref PermissionsBoundaryArn
@@ -259,10 +263,10 @@ Resources:
         SubnetIds: !If
           - IsDevPlatformDeploy
           - [
-              !ImportValue cri-vpc-ProtectedSubnetIdA,
-              !ImportValue cri-vpc-ProtectedSubnetIdB,
+              Fn::ImportValue: !Sub "${VpcStackName}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackName}-ProtectedSubnetIdB",
             ]
-          - !Split [",", !ImportValue cri-vpc-PrivateSubnets]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-sessionTS"
@@ -436,10 +440,10 @@ Resources:
         SubnetIds: !If
           - IsDevPlatformDeploy
           - [
-              !ImportValue cri-vpc-PrivateSubnetIdA,
-              !ImportValue cri-vpc-PrivateSubnetIdB,
+              Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIdB",
             ]
-          - !Split [",", !ImportValue cri-vpc-PrivateSubnets]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-authorizationTS"
@@ -581,10 +585,10 @@ Resources:
         SubnetIds: !If
           - IsDevPlatformDeploy
           - [
-              !ImportValue cri-vpc-ProtectedSubnetIdA,
-              !ImportValue cri-vpc-ProtectedSubnetIdB,
+              Fn::ImportValue: !Sub "${VpcStackName}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackName}-ProtectedSubnetIdB",
             ]
-          - !Split [",", !ImportValue cri-vpc-PrivateSubnets]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-access-token-2"
@@ -727,10 +731,10 @@ Resources:
         SubnetIds: !If
           - IsDevPlatformDeploy
           - [
-              !ImportValue cri-vpc-PrivateSubnetIdA,
-              !ImportValue cri-vpc-PrivateSubnetIdB,
+              Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIdB",
             ]
-          - !Split [",", !ImportValue cri-vpc-PrivateSubnets]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-create-auth-code"

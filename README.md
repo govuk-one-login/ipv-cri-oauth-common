@@ -31,6 +31,7 @@ Below is detailed documentation for working with OAuth Common, but further infor
 | LambdaProvisionedConcurrentExecutions | No | 0 | Stubbed JWKS endpoint for non-prod environments | 1 |
 | LambdaVpcConfiguration | Yes | - | Stubbed JWKS endpoint for non-prod environments | `di-devplatform-deploy` |
 | PermissionsBoundaryArn | No | `none` | The ARN of the permissions boundary to apply when creating IAM roles | `An AWS ARN` |
+| VpcStackName | No | `cri-vpc` | The name of the stack containing VPC infrastructure | `cri-vpc` |
 
 ## Stack Outputs
 
