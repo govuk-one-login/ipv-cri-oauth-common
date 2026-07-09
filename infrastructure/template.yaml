@@ -378,6 +378,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt SessionFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   SessionFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -385,6 +386,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref SessionFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   SessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -526,6 +528,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AuthorizationFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   AuthorizationFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -533,6 +536,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AuthorizationFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   AuthorizationFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -678,6 +682,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AccessTokenFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   AccessTokenAliasPermission:
     Type: AWS::Lambda::Permission
@@ -685,6 +690,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AccessTokenFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   AccessTokenFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -800,6 +806,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CreateAuthCodeFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
 
   DynamoTablesEncryptionKey:
     Type: AWS::KMS::Key
