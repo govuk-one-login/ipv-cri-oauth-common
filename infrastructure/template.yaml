@@ -144,6 +144,11 @@ Parameters:
     Description: The ARN of the permissions boundary to apply when creating IAM roles
     Default: "none"
 
+  PrivateApiGatewayId:
+    Type: String
+    Description: Optional private API gateway ID taken from the CRI output
+    Default: ""
+
   VpcStackNameOverride:
     Description: "The name of the stack containing VPC infrastructure. This parameter will be renamed to VpcStackName 
     in line with a similar parameter set on the pipeline. However, some of the pipelines currently set VpcStackName to 
@@ -213,6 +218,10 @@ Conditions:
     - !Equals [ !Ref KeyRotation, "false" ]
     - !Equals [ !Ref KeyRotationFallback, "true" ]
   IsCredentialIssuer: !Equals [!Ref IsCredentialIssuer, "true"]
+  IsPrivateGatewayId: !Not [!Equals [!Ref PrivateApiGatewayId, ""]]
+  IsDevOnlyApi: !And
+    - !Condition IsDev
+    - !Not [!Condition IsPrivateGatewayId]
 
 Globals:
   Function:
@@ -372,21 +381,45 @@ Resources:
       FilterPattern: ""
       LogGroupName: !Ref SessionFnLogGroup
 
-  SessionFnPermission:
+  SessionFnPermissionForPrivateApi:
     Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt SessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
 
-  SessionFnAliasPermission:
+  SessionFnPermissionForDevOnlyApi:
     Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt SessionFn.Arn
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
+
+  SessionFnAliasPermissionForPrivateApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref SessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+
+  SessionFnAliasPermissionForDevOnlyApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SessionFn.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
 
   SessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -522,21 +555,45 @@ Resources:
       FilterPattern: ""
       LogGroupName: !Ref AuthorizationFnLogGroup
 
-  AuthorizationFnPermission:
+  AuthorizationFnPermissionForPrivateApi:
     Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AuthorizationFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
 
-  AuthorizationFnAliasPermission:
+  AuthorizationFnPermissionForDevOnlyApi:
     Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AuthorizationFn.Arn
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
+
+  AuthorizationFnAliasPermissionForDevOnlyApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AuthorizationFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
+
+  AuthorizationFnAliasPermissionForPrivateApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AuthorizationFn.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
 
   AuthorizationFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -676,21 +733,45 @@ Resources:
       FilterPattern: ""
       LogGroupName: !Ref AccessTokenFnLogGroup
 
-  AccessTokenPermission:
+  AccessTokenPermissionForPrivateApi:
     Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AccessTokenFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
 
-  AccessTokenAliasPermission:
+  AccessTokenPermissionForDevOnlyApi:
     Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt AccessTokenFn.Arn
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
+
+  AccessTokenAliasPermissionForPrivateApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsPrivateGatewayId
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AccessTokenFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+
+  AccessTokenAliasPermissionForDevOnlyApi:
+    Type: AWS::Lambda::Permission
+    Condition: IsDevOnlyApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AccessTokenFn.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
 
   AccessTokenFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -807,6 +888,7 @@ Resources:
       FunctionName: !GetAtt CreateAuthCodeFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
 
   DynamoTablesEncryptionKey:
     Type: AWS::KMS::Key
