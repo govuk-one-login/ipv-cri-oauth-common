@@ -19,6 +19,8 @@ Below is detailed documentation for working with OAuth Common, but further infor
 | CriVcIssuer | Yes      | -                     | Issuer for the CRI                                                             | `https://review-hc.dev.account.gov.uk` |
 | CriPrivateApiGwName | Yes      | -                     | The private API GW name, for Canary alarms                                     | `check-hmrc-cri-api-private` |
 | CriPublicApiGwName | Yes      | -                     | The public API GW name, for Canary alarms                                      | `check-hmrc-cri-api-public` |
+| CriPrivateApiGatewayID | Yes      | `*`                   | The private api gateway in the account that can invoke the lambda              | `pwb525k4q8` |
+| CriPublicApiGatewayID | Yes      | `*`                   | The public api gateway in the account that can invoke the lambda               | `o32badl97j` |
 | DbSessionTTL | No       | 7200                  | TTL for the Session Table, default 2 hours                                     | 7200 |
 | DbCustomerManagedKey | No       | `true`                | Use a CustomerManagedKey for the DynamoDB Tables                               | `false` |
 | DefaultClientId | No       | `ipv-core`            | The client ID used by the main OAuth client                                    | `ipv-core` |
@@ -33,7 +35,6 @@ Below is detailed documentation for working with OAuth Common, but further infor
 | LambdaProvisionedConcurrentExecutions | No       | 0                     | Stubbed JWKS endpoint for non-prod environments                                | 1 |
 | LambdaVpcConfiguration | Yes      | -                     | Stubbed JWKS endpoint for non-prod environments                                | `di-devplatform-deploy` |
 | PermissionsBoundaryArn | No       | `none`                | The ARN of the permissions boundary to apply when creating IAM roles           | `An AWS ARN` |
-| PrivateApiGatewayId | Yes      | `*`                   | The private api gateway in the account that can invoke the lambda              | `pwb525k4q8` |
 | VpcStackNameOverride | No       | `cri-vpc`             | The name of the stack containing VPC infrastructure                            | `cri-vpc` |
 
 > **Note:** The `VpcStackNameOverride` parameter will be renamed to `VpcStackName`

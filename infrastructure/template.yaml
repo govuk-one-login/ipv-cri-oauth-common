@@ -59,6 +59,16 @@ Parameters:
       The public API GW name, for Canary alarms
       Example: check-hmrc-cri-api-public
 
+  CriPrivateApiGatewayID:
+    Type: String
+    Description: Private API gateway ID used to constrain Lambda permissions.
+    Default: "*"
+
+  CriPublicApiGatewayID:
+    Type: String
+    Description: Public API gateway ID used to constrain Lambda permissions.
+    Default: "*"
+
   DbSessionTTL:
     Type: Number
     Description: TTL for the Session Table, default 2 hours
@@ -143,11 +153,6 @@ Parameters:
     Type: String
     Description: The ARN of the permissions boundary to apply when creating IAM roles
     Default: "none"
-
-  PrivateApiGatewayId:
-    Type: String
-    Description: Private API gateway ID used to constrain Lambda permissions.
-    Default: "*"
 
   VpcStackNameOverride:
     Description: "The name of the stack containing VPC infrastructure. This parameter will be renamed to VpcStackName 
@@ -384,7 +389,7 @@ Resources:
       FunctionName: !GetAtt SessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -393,7 +398,7 @@ Resources:
       FunctionName: !Ref SessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -536,7 +541,7 @@ Resources:
       FunctionName: !GetAtt AuthorizationFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -545,7 +550,7 @@ Resources:
       FunctionName: !Ref AuthorizationFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -692,7 +697,7 @@ Resources:
       FunctionName: !GetAtt AccessTokenFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenAliasPermission:
     Type: AWS::Lambda::Permission
@@ -701,7 +706,7 @@ Resources:
       FunctionName: !Ref AccessTokenFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PrivateApiGatewayId}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
