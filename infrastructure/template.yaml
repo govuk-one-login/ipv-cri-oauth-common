@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 0.5.0
+    SemanticVersion: 0.6.0
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -58,6 +58,16 @@ Parameters:
     Description: >
       The public API GW name, for Canary alarms
       Example: check-hmrc-cri-api-public
+
+  CriPrivateApiGatewayID:
+    Type: String
+    Description: Private API gateway ID used to constrain Lambda permissions.
+    Default: "*"
+
+  CriPublicApiGatewayID:
+    Type: String
+    Description: Public API gateway ID used to constrain Lambda permissions.
+    Default: "*"
 
   DbSessionTTL:
     Type: Number
@@ -378,6 +388,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt SessionFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -385,6 +397,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref SessionFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -526,6 +540,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AuthorizationFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -533,6 +549,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AuthorizationFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -678,6 +696,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt AccessTokenFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenAliasPermission:
     Type: AWS::Lambda::Permission
@@ -685,6 +705,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AccessTokenFn.Alias
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -800,6 +822,8 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CreateAuthCodeFn.Arn
       Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
 
   DynamoTablesEncryptionKey:
     Type: AWS::KMS::Key
