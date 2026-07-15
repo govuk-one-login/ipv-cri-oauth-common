@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 0.6.0
+    SemanticVersion: 0.7.0
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -27,6 +27,18 @@ Parameters:
     Description: The topic to publish notification and sns alerts
     Type: String
     Default: "build-notifications"
+
+  CommonLambdasStackName:
+    Type: String
+    Description: For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration. 
+    Default: ""
+  CommonLambdasUsesCMK:
+    Type: String
+    Description: For migration only - The common-lambdas stack in the account uses a CMK. 
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
 
   CSLSDestinationArn:
     Type: String
@@ -224,6 +236,10 @@ Conditions:
     - !Equals [ !Ref KeyRotationFallback, "true" ]
   IsCredentialIssuer: !Equals [!Ref IsCredentialIssuer, "true"]
 
+  IsUsingCommonLambdasTables: !Not
+    - !Equals [!Ref CommonLambdasStackName, ""]
+  IsCommonLambdasUsingCMK: !Equals [!Ref CommonLambdasUsesCMK, "true"]
+
 Globals:
   Function:
     VpcConfig:
@@ -307,8 +323,14 @@ Resources:
           CRI_IDENTIFIER: !Sub "${CriIdentifier}"
           ENV_VAR_FEATURE_FLAG_KEY_ROTATION: !Ref KeyRotation
           ENV_VAR_FEATURE_FLAG_KEY_ROTATION_LEGACY_KEY_FALLBACK: !Ref KeyRotationFallback
-          SESSION_TABLE: !Ref SessionTable
-          PERSON_IDENTITY_TABLE: !Ref PersonIdentityTable
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
+          PERSON_IDENTITY_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/PersonIdentityTableName}}"
+            - !Ref PersonIdentityTable
           VC_ISSUER: !Ref CriVcIssuer
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
@@ -319,6 +341,16 @@ Resources:
             TableName: !Ref SessionTable
         - DynamoDBWritePolicy:
             TableName: !Ref PersonIdentityTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/PersonIdentityTableName}}"
+          - !Ref AWS::NoValue
         - SQSSendMessagePolicy:
             QueueName:
               Fn::ImportValue: !Sub ${AuditTxmaStackName}-AuditEventQueueName
@@ -329,6 +361,11 @@ Resources:
           - !Ref AWS::NoValue
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
+        - !If
+          - IsCommonLambdasUsingCMK
+          - KMSDecryptPolicy:
+              KeyId: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/DynamoDBCustomerManagedKeyID}}"
+          - !Ref AWS::NoValue
         - SSMParameterReadPolicy:
             ParameterName: !Sub "${AWS::StackName}/clients/*"
         - Statement:
@@ -486,7 +523,10 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-authorizationTS"
-          SESSION_TABLE: !Ref SessionTable
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -494,10 +534,25 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - DynamoDBReadPolicy:
             TableName: !Ref SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBReadPolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
         - DynamoDBWritePolicy:
             TableName: !Ref SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
+        - !If
+          - IsCommonLambdasUsingCMK
+          - KMSDecryptPolicy:
+              KeyId: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/DynamoDBCustomerManagedKeyID}}"
+          - !Ref AWS::NoValue
         - SSMParameterReadPolicy:
             ParameterName: !Sub "${AWS::StackName}/clients/*"
       ProvisionedConcurrencyConfig: !If
@@ -635,7 +690,10 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-access-token-2"
-          SESSION_TABLE: !Ref SessionTable
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -644,11 +702,26 @@ Resources:
         - DynamoDBReadPolicy:
             TableName:
               Ref: SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBReadPolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
         - DynamoDBWritePolicy:
             TableName:
               Ref: SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
+        - !If
+          - IsCommonLambdasUsingCMK
+          - KMSDecryptPolicy:
+              KeyId: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/DynamoDBCustomerManagedKeyID}}"
+          - !Ref AWS::NoValue
         - Statement:
             - Effect: Allow
               Action:
@@ -785,13 +858,26 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-create-auth-code"
-          SESSION_TABLE: !Ref SessionTable
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
       Policies:
         - DynamoDBWritePolicy:
             TableName:
               Ref: SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
+        - !If
+          - IsCommonLambdasUsingCMK
+          - KMSDecryptPolicy:
+              KeyId: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/DynamoDBCustomerManagedKeyID}}"
+          - !Ref AWS::NoValue
         - Statement:
             - Effect: Allow
               Action:

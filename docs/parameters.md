@@ -7,6 +7,8 @@
 | AuditEventNamePrefix | Yes      | -                     | The audit event name prefix                                                    | `IPV_HMRC_RECORD_CHECK_CRI` |
 | AuditTxmaStackName | No       | `txma-infrastructure` | The stack containing the TXMA infrastructure                                   | `txma-infrastructure` |
 | BuildNotificationStackName | No       | `build-notifications` | The stack containing the topic to publish notification and sns alerts          | `build-notifications` |
+| CommonLambdasStackName | No | `""` | For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration. | `common-cri-api` |
+| CommonLambdasUsesCMK | No | `false` |  For migration only - Does the common-lambdas stack in the account use a CMK for its databases. | `true` |
 | CSLSDestinationArn | No       | `none`                | ARN of the CSLSEGRESS destination                                              | `arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2` |
 | CriIdentifier | Yes      | -                     | The unique credential issuer identifier                                        | `di-ipv-cri-check-hmrc-api` |
 | CriAudience | Yes      | -                     | Audience for the CRI                                                           | `https://review-hc.dev.account.gov.uk` |
