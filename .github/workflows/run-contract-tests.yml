@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cri-provider: ["ExperianKbvCriTokenProvider", "NinoCriTokenProvider"]
+        cri-provider: ["ExperianKbvCriTokenProvider", "NinoCriTokenProvider", "AddressCriTokenProvider"]
     steps:
       - name: Pull repository
         uses: actions/checkout@v4
