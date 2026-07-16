@@ -12,20 +12,25 @@ on:
       aws-region:
         description: The region in which the stack was deployed
         value: ${{ jobs.deploy.outputs.aws-region }}
+      migrating-stack-name:
+        description: The deployed stack name
+        value: ${{ jobs.deploy-migrating.outputs.stack-name }}
+      migrating-stack-outputs:
+        description: The deployed stack outputs
+        value: ${{ jobs.deploy-migrating.outputs.stack-outputs }}
+      migrating-aws-region:
+        description: The region in which the stack was deployed
+        value: ${{ jobs.deploy-migrating.outputs.aws-region }}
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  deploy:
-    name: Deploy app
+  build:
+    name: Build app
     runs-on: ubuntu-latest
     environment: integration-tests
-    outputs:
-      stack-name: ${{ steps.deploy.outputs.stack-name }}
-      stack-outputs: ${{ steps.deploy.outputs.stack-outputs }}
-      aws-region: ${{ steps.deploy.outputs.aws-region }}
     concurrency:
       group: check-repo-${{ github.head_ref || github.ref_name }}
       cancel-in-progress: true
@@ -57,7 +62,20 @@ jobs:
           cache-name: common-oauth-${{ github.head_ref || github.ref_name }}
           pull-repository: false
 
-      - name: Deploy stack
+  deploy:
+    name: Deploy stack
+    needs: build
+    runs-on: ubuntu-latest
+    environment: integration-tests
+    outputs:
+      stack-name: ${{ steps.deploy.outputs.stack-name }}
+      stack-outputs: ${{ steps.deploy.outputs.stack-outputs }}
+      aws-region: ${{ steps.deploy.outputs.aws-region }}
+    concurrency:
+      group: deploy-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - name: Deploy OAuthCommon
         uses: govuk-one-login/github-actions/sam/deploy-stack@ca188729ecb0c92e5fe5ae7c024f9894815da3a1
         id: deploy
         env:
@@ -70,7 +88,7 @@ jobs:
           stack-name-length-limit: 37
           cache-name: common-oauth-${{ github.head_ref || github.ref_name }}
           s3-prefix: preview
-          pull-repository: false
+          pull-repository: true
           delete-failed-stack: true
           tags: |
             cri:component=ipv-cri-common-lambdas
@@ -79,6 +97,54 @@ jobs:
             cri:deployment-source=github-actions
           parameters: |
             AuditEventNamePrefix=IPV_COMMON_CRI
+            CriIdentifier=di-ipv-cri-check-hmrc-api
+            CriAudience=https://review-hc.dev.account.gov.uk
+            CriVcIssuer=https://review-hc.dev.account.gov.uk
+            CriPrivateApiGwName=check-hmrc-cri-api-private
+            CriPublicApiGwName=check-hmrc-cri-api-private
+            Environment=dev
+            IPVCoreRedirectURI=https://identity.staging.account.gov.uk/credential-issuer/callback?id=nino
+            IPVCoreStubJwksEndpoint=https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json
+            KeyRotationFallback=true
+            LambdaVpcConfiguration=di-devplatform-deploy
+
+  deploy-migrating:
+    name: Deploy migrating stack
+    needs: build
+    runs-on: ubuntu-latest
+    environment: integration-tests
+    outputs:
+      stack-name: ${{ steps.deploy-migrating.outputs.stack-name }}
+      stack-outputs: ${{ steps.deploy-migrating.outputs.stack-outputs }}
+      aws-region: ${{ steps.deploy-migrating.outputs.aws-region }}
+    concurrency:
+      group: deploy-migrating-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - name: Deploy a migrating OAuthCommon
+        uses: govuk-one-login/github-actions/sam/deploy-stack@ca188729ecb0c92e5fe5ae7c024f9894815da3a1
+        id: deploy-migrating
+        env:
+          AWS_REGION: eu-west-2
+        with:
+          sam-deployment-bucket: ${{ vars.DEPLOYMENT_ARTIFACTS_BUCKET }}
+          aws-role-arn: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+          aws-region: eu-west-2
+          stack-name-prefix: preview-oauth-migrating
+          stack-name-length-limit: 37
+          cache-name: common-oauth-${{ github.head_ref || github.ref_name }}
+          s3-prefix: preview
+          pull-repository: true
+          delete-failed-stack: true
+          tags: |
+            cri:component=ipv-cri-common-lambdas
+            cri:stack-type=preview
+            cri:application=Orange
+            cri:deployment-source=github-actions
+          parameters: |
+            AuditEventNamePrefix=IPV_COMMON_CRI
+            CommonLambdasStackName=common-cri-api
+            CommonLambdasUsesCMK=true
             CriIdentifier=di-ipv-cri-check-hmrc-api
             CriAudience=https://review-hc.dev.account.gov.uk
             CriVcIssuer=https://review-hc.dev.account.gov.uk
