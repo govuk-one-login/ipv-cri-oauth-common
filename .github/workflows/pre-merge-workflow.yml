@@ -67,6 +67,8 @@ jobs:
       aws-region: ${{ needs.deploy.outputs.migrating-aws-region }}
       stack-name: ${{ needs.deploy.outputs.migrating-stack-name }}
       stack-outputs: ${{ needs.deploy.outputs.migrating-stack-outputs }}
+      is-oauth-tables: false
+      is-common-lambdas-tables: true
     secrets:
       api-gateway-api-key: ${{ secrets.APIGW_API_KEY }}
       ipv-core-stub-basic-auth-user: ${{ secrets.IPV_CORE_STUB_BASIC_AUTH_USER }}
