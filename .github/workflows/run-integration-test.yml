@@ -15,6 +15,16 @@ on:
         description: The deployed stack outputs
         required: true
         type: string
+      is-oauth-tables:
+        description: 'Enable checks for writes to oauth tables'
+        required: false
+        type: boolean
+        default: true
+      is-common-lambdas-tables:
+        description: 'Enable checks for writes to common-lambdas tables'
+        required: false
+        type: boolean
+        default: false
     secrets:
       api-gateway-api-key:
         required: false
@@ -64,5 +74,9 @@ jobs:
         IPV_CORE_STUB_BASIC_AUTH_USER: ${{ secrets.ipv-core-stub-basic-auth-user }}
         IPV_CORE_STUB_URL: https://cri.core.build.stubs.account.gov.uk
         DEFAULT_CLIENT_ID: ipv-core-stub-aws-build
+        PERSON_IDENTITY_TABLE_NAME: ${{ fromJson(inputs.stack-outputs).DbPersonIdentityTableName }}
+        SESSION_TABLE_NAME: ${{ fromJson(inputs.stack-outputs).DbSessionTableName }}
+        OAUTH_TABLES: ${{ inputs.is-oauth-tables }}
+        COMMON_LAMBDAS_TABLES: ${{ inputs.is-common-lambdas-tables }}
       working-directory: integration-tests
       run: ./gradlew cucumber

@@ -17,6 +17,7 @@ ext {
 	junitJupiterapi = '5.9.0'
 	jacksonDatabind = '2.9.5'
 	apacheHttpClient = '4.5.13'
+    dynamoDBVersion = '2.47.6'
 }
 
 dependencies {
@@ -26,6 +27,7 @@ dependencies {
 	testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterapi"
 	testImplementation "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabind"
 	testImplementation "org.junit.jupiter:junit-jupiter-engine:$junitJupiterapi"
+    testImplementation "software.amazon.awssdk:dynamodb:$dynamoDBVersion"
 }
 
 configurations {

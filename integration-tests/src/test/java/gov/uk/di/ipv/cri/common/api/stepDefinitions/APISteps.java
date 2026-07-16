@@ -3,6 +3,7 @@ package gov.uk.di.ipv.cri.common.api.stepDefinitions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.uk.di.ipv.cri.common.api.util.DynamoDBUtil;
 import gov.uk.di.ipv.cri.common.api.util.IpvCoreStubUtil;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
@@ -18,7 +19,9 @@ import java.util.logging.Logger;
 
 import static gov.uk.di.ipv.cri.common.api.util.IpvCoreStubUtil.sendCreateAuthCodeRequest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class APISteps {
     private static final Logger LOG = Logger.getLogger(APISteps.class.getName());
@@ -34,6 +37,12 @@ public class APISteps {
                     : "https://cri.core.build.stubs.account.gov.uk/callback";
     private static final String DEFAULT_CLIENT_ID =
             System.getenv().getOrDefault("DEFAULT_CLIENT_ID", "ipv-core-stub-aws-build");
+    private static final boolean OAUTH_TABLES =
+            Boolean.parseBoolean(System.getenv().getOrDefault("OAUTH_TABLES", "true"));
+    private static final boolean COMMON_LAMBDAS_TABLES =
+            Boolean.parseBoolean(System.getenv().getOrDefault("COMMON_LAMBDAS_TABLES", "false"));
+    private static final String PERSON_IDENTITY_TABLE_NAME = System.getenv("PERSON_IDENTITY_TABLE_NAME");
+    private static final String SESSION_TABLE_NAME = System.getenv("SESSION_TABLE_NAME");
     private String currentAuthorizationCode;
     private String sessionRequestBody;
     private String currentSessionId;
@@ -184,5 +193,24 @@ public class APISteps {
     public void sessionHasAnAuthCode()
             throws URISyntaxException, IOException, InterruptedException {
         sendCreateAuthCodeRequest(currentSessionId);
+    }
+
+    @When("the session data is in the correct tables")
+     public void sessionDataIsInTheCorrectTables() {
+        if(OAUTH_TABLES) {
+            assertTrue(DynamoDBUtil.sessionExists(SESSION_TABLE_NAME, currentSessionId));
+            assertTrue(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
+        } else {
+            assertFalse(DynamoDBUtil.sessionExists(SESSION_TABLE_NAME, currentSessionId));
+            assertFalse(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
+        }
+
+        if(COMMON_LAMBDAS_TABLES) {
+            assertTrue(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
+            assertTrue(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
+        } else {
+            assertFalse(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
+            assertFalse(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
+        }
     }
 }
