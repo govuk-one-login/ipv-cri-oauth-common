@@ -2,9 +2,10 @@ import { SessionService } from "../../../src/services/session-service";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
 import { InvalidAccessTokenError, SessionNotFoundError } from "../../../src/common/utils/errors";
-import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
+import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ConditionalCheckFailedException, TableNotFoundException } from "@aws-sdk/client-dynamodb";
 
 const UUID_REGEX = new RegExp(/^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i);
 
@@ -307,6 +308,103 @@ describe("session-service", () => {
             );
 
             expect(output.sessionId).toEqual(expect.stringMatching(UUID_REGEX));
+        });
+    });
+
+    describe("updateSession", () => {
+        const mockUpdateSessionRequest: SessionItem = {
+            sessionId: "00000000-0000-0000-0000-000000000001",
+            attemptCount: 0,
+            clientId: "test-jwt-client-id",
+            clientSessionId: "test-journey-id",
+            createdDate: Date.now() as UnixMillisecondsTimestamp,
+            expiryDate: Math.floor(Date.now() / 1000) as UnixSecondsTimestamp,
+            redirectUri: "test-redirect-uri",
+            state: "test-state",
+            subject: "test-sub",
+        };
+
+        const expectedEpoch = (Date.now() / 1000 + 60) as UnixSecondsTimestamp;
+
+        beforeEach(() => {
+            vi.spyOn(configService, "getConfigEntry").mockReturnValue("session-table-name");
+            vi.spyOn(configService, "getAuthorizationCodeExpirationEpoch").mockReturnValue(expectedEpoch);
+        });
+
+        it("should not call dynamodb if their no authorization code", async () => {
+            await sessionService.updateSession(mockUpdateSessionRequest);
+            expect(mockDynamoDbClient.prototype.send).not.toHaveBeenCalled();
+        });
+
+        it("should call dynamodb if their is an authorization code", async () => {
+            await sessionService.updateSession({ ...mockUpdateSessionRequest, authorizationCode: "auth-code" });
+
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        TableName: "session-table-name",
+                        Key: { sessionId: "00000000-0000-0000-0000-000000000001" },
+                        ExpressionAttributeValues: {
+                            ":authCode": "auth-code",
+                            ":authCodeExpiry": expectedEpoch,
+                        },
+                    }),
+                }),
+            );
+        });
+
+        it("should absorb ConditionalCheckFailedException", async () => {
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockThrow(
+                new ConditionalCheckFailedException({
+                    $metadata: {},
+                    message: "ConditionalCheckFailedException",
+                }),
+            );
+
+            await expect(
+                async () =>
+                    await sessionService.updateSession({ ...mockUpdateSessionRequest, authorizationCode: "auth-code" }),
+            ).not.toThrow();
+
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        TableName: "session-table-name",
+                        Key: { sessionId: "00000000-0000-0000-0000-000000000001" },
+                        ExpressionAttributeValues: {
+                            ":authCode": "auth-code",
+                            ":authCodeExpiry": expectedEpoch,
+                        },
+                    }),
+                }),
+            );
+        });
+
+        it("should throw any other exceptions", async () => {
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockThrow(
+                new TableNotFoundException({
+                    $metadata: {},
+                    message: "TableNotFoundException",
+                }),
+            );
+
+            await expect(
+                async () =>
+                    await sessionService.updateSession({ ...mockUpdateSessionRequest, authorizationCode: "auth-code" }),
+            ).rejects.toThrow(TableNotFoundException);
+
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        TableName: "session-table-name",
+                        Key: { sessionId: "00000000-0000-0000-0000-000000000001" },
+                        ExpressionAttributeValues: {
+                            ":authCode": "auth-code",
+                            ":authCodeExpiry": expectedEpoch,
+                        },
+                    }),
+                }),
+            );
         });
     });
 });

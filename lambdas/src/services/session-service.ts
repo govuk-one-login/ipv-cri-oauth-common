@@ -11,7 +11,7 @@ import {
 import { SessionRequestSummary } from "../types/session-request-summary";
 import { CommonConfigKey } from "../types/config-keys";
 import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
-import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 
 export class SessionService {
     constructor(
