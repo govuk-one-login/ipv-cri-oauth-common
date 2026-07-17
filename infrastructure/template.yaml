@@ -837,6 +837,117 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
 
+  UpdateSessionFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-UpdateSessionFn"
+      DeploymentPreference:
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+        Alarms: !If
+          - IsCanaryDeployment
+          - [!Ref SessionFnLambdaErrors, !Ref SessionFnCanary5xxErrors]
+          - [!Ref AWS::NoValue]
+      CodeUri: ../lambdas
+      Handler: update-session-handler.lambdaHandler
+      Runtime: nodejs22.x
+      Layers:
+        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
+      VpcConfig:
+        SubnetIds: !If
+          - IsDevPlatformDeploy
+          - [
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+            ]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-create-auth-code"
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName:
+              Ref: SessionTable
+        - DynamoDBReadPolicy:
+            TableName: 
+              Ref: SessionTable
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
+        - KMSDecryptPolicy:
+            KeyId: !Ref DynamoTablesEncryptionKey
+        - !If
+          - IsCommonLambdasUsingCMK
+          - KMSDecryptPolicy:
+              KeyId: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/DynamoDBCustomerManagedKeyID}}"
+          - !Ref AWS::NoValue
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameters
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/SessionTableName"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/clients/*"
+      ProvisionedConcurrencyConfig: !If
+        - IsProvisionedConcurrencyEnabled
+        - ProvisionedConcurrentExecutions: !Ref LambdaProvisionedConcurrentExecutions
+        - !Ref AWS::NoValue
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        Target: es2022
+        Sourcemap: true # Enabling source maps will create the required NODE_OPTIONS environment variables on your lambda function during sam build
+        OutExtension:
+          - .js=.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        EntryPoints:
+          - src/handlers/update-session-handler.ts
+        External:
+          - "@aws-sdk/*"
+
+  UpdateSessionFnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${UpdateSessionFn}"
+      RetentionInDays: 30
+
+  UpdateSessionFnLogGroupSubscriptionFilterCSLS:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: IsCSLSEnabled
+    Properties:
+      DestinationArn: !Ref CSLSDestinationArn
+      FilterPattern: ""
+      LogGroupName: !Ref UpdateSessionFnLogGroup
+
+  UpdateSessionFnPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt UpdateSessionFn.Arn
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
+  UpdateSessionFnAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref UpdateSessionFn.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
   CreateAuthCodeFn:
     Type: AWS::Serverless::Function
     Condition: IsDev
@@ -1676,6 +1787,37 @@ Resources:
                 passthroughBehavior: "when_no_match"
                 contentHandling: "CONVERT_TO_TEXT"
                 type: "aws_proxy"
+            put:
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/SessionUpdate"
+                required: true
+              response:
+                "200":
+                  description: A successful response with no contents
+                "400":
+                  description: A bad request error with a message
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: An internal server error with a message
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: "Validate both"
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateSessionFn.Arn}/invocations
+                passthroughBehavior: "when_no_match"
 
           /token:
             post:
@@ -1820,6 +1962,11 @@ Resources:
               type: "object"
               properties:
                 session_id:
+                  type: "string"
+            SessionUpdate:
+              type: "object"
+              properties:
+                authorizationCode:
                   type: "string"
         x-amazon-apigateway-request-validators:
           Validate both:

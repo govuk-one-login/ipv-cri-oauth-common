@@ -11,6 +11,7 @@ import {
 import { SessionRequestSummary } from "../types/session-request-summary";
 import { CommonConfigKey } from "../types/config-keys";
 import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
+import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 
 export class SessionService {
     constructor(
@@ -117,6 +118,32 @@ export class SessionService {
         });
         await this.dynamoDbClient.send(putSessionCommand);
         return sessionItem;
+    }
+
+    public async updateSession(sessionItem: SessionItem) {
+        if (!sessionItem.authorizationCode) {
+            return;
+        }
+
+        const authorizationCodeExpiryDate = this.configService.getAuthorizationCodeExpirationEpoch();
+        const updateSessionCommand = new UpdateCommand({
+            TableName: this.configService.getConfigEntry(CommonConfigKey.SESSION_TABLE_NAME),
+            Key: { sessionId: sessionItem.sessionId },
+            UpdateExpression: "SET authorizationCode=:authCode, authorizationCodeExpiryDate=:authCodeExpiry",
+            ConditionExpression: "authorizationCode <> :authCode",
+            ExpressionAttributeValues: {
+                ":authCode": sessionItem.authorizationCode,
+                ":authCodeExpiry": authorizationCodeExpiryDate,
+            },
+        });
+
+        try {
+            await this.dynamoDbClient.send(updateSessionCommand);
+        } catch (error) {
+            if (!(error instanceof ConditionalCheckFailedException)) {
+                throw error;
+            }
+        }
     }
 
     private getSessionTableName(): string {
