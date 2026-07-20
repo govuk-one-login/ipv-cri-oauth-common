@@ -6,7 +6,6 @@ import { ConfigService } from "../common/config/config-service";
 import middy from "@middy/core";
 import errorMiddleware from "../middlewares/error/error-middleware";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
-import getSessionByIdMiddleware from "../middlewares/session/get-session-by-id-middleware";
 import setGovUkSigningJourneyIdMiddleware from "../middlewares/session/set-gov-uk-signing-journey-id-middleware";
 import { SessionService } from "../services/session-service";
 import { logger } from "@govuk-one-login/cri-logger";
@@ -15,6 +14,7 @@ import initialiseConfigMiddleware from "../middlewares/config/initialise-config-
 import { CommonConfigKey } from "../types/config-keys";
 import getUpdateSessionBodyMiddleWare from "../middlewares/session/get-update-session-body-middleware";
 import { SessionItem } from "@govuk-one-login/cri-types";
+import { getSessionId } from "../common/utils/request-utils";
 
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
 const UPDATE_SESSION_METRIC = "session_updated";
@@ -31,13 +31,11 @@ export class UpdatedSessionLambda implements LambdaInterface {
         _context: unknown,
     ): Promise<APIGatewayProxyResult | { statusCode: number }> {
         const sessionItem = event.body as unknown as SessionItem;
+
+        sessionItem.sessionId ??= getSessionId(event);
         this.sessionService.updateSession(sessionItem);
 
         return { statusCode: 204 };
-    }
-
-    getSessionService() {
-        return this.sessionService;
     }
 }
 
@@ -61,5 +59,4 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
         }),
     )
     .use(getUpdateSessionBodyMiddleWare())
-    .use(getSessionByIdMiddleware({ sessionService: handlerClass.getSessionService() }))
     .use(setGovUkSigningJourneyIdMiddleware(logger));

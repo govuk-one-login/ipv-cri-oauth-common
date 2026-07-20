@@ -5,7 +5,6 @@ import { SessionService } from "../../../src/services/session-service";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
 import middy from "@middy/core";
 import errorMiddleware from "../../../src/middlewares/error/error-middleware";
-import getSessionByIdMiddleware from "../../../src/middlewares/session/get-session-by-id-middleware";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import setGovUkSigningJourneyIdMiddleware from "../../../src/middlewares/session/set-gov-uk-signing-journey-id-middleware";
 import { logger } from "@govuk-one-login/cri-logger";
@@ -19,7 +18,6 @@ import { SessionItem } from "@govuk-one-login/cri-types";
 vi.mock("@aws-sdk/lib-dynamodb");
 
 const TEST_SESSION_ID = "00000000-0000-0000-0000-000000000001";
-const TEST_ORIGIN_AUTH_CODE = "VGVzdCBWYWx1ZQo";
 const TEST_NEW_AUTH_CODE = "UmVwbGFjZW1lbnQgVmFsdWUK";
 
 const createTestRequest = (sessionId: string, session?: SessionItem): APIGatewayProxyEvent =>
@@ -65,14 +63,10 @@ describe("UpdatedSessionLambda", () => {
                 }),
             )
             .use(getUpdateSessionBodyMiddleWare())
-            .use(getSessionByIdMiddleware({ sessionService: sessionService.prototype }))
             .use(setGovUkSigningJourneyIdMiddleware(logger));
     });
 
-    it("should call the session service with no auth code if not in record or request", async () => {
-        vi.spyOn(sessionService.prototype, "getSession").mockResolvedValue({
-            sessionId: TEST_SESSION_ID,
-        } as SessionItem);
+    it("should call the session service when the authorization code is not present", async () => {
         const updateSessionSpy = vi.spyOn(sessionService.prototype, "updateSession");
         const request = createTestRequest(TEST_SESSION_ID);
         const response = await updateSessionLambda(request, {} as Context);
@@ -80,30 +74,11 @@ describe("UpdatedSessionLambda", () => {
         expect(response).toStrictEqual({ statusCode: 204 });
         expect(updateSessionSpy).toHaveBeenCalledWith({
             sessionId: TEST_SESSION_ID,
+            clientSessionId: undefined,
         });
     });
 
-    it("should call the session service with original auth code is in record, but not request", async () => {
-        vi.spyOn(sessionService.prototype, "getSession").mockResolvedValue({
-            sessionId: TEST_SESSION_ID,
-            authorizationCode: TEST_ORIGIN_AUTH_CODE,
-        } as SessionItem);
-        const updateSessionSpy = vi.spyOn(sessionService.prototype, "updateSession");
-        const request = createTestRequest(TEST_SESSION_ID);
-        const response = await updateSessionLambda(request, {} as Context);
-
-        expect(response).toStrictEqual({ statusCode: 204 });
-        expect(updateSessionSpy).toHaveBeenCalledWith({
-            sessionId: TEST_SESSION_ID,
-            authorizationCode: TEST_ORIGIN_AUTH_CODE,
-        });
-    });
-
-    it("should call the session service with the new auth code is in record and in request", async () => {
-        vi.spyOn(sessionService.prototype, "getSession").mockResolvedValue({
-            sessionId: TEST_SESSION_ID,
-            authorizationCode: TEST_ORIGIN_AUTH_CODE,
-        } as SessionItem);
+    it("should call the session service when the authorization code is present", async () => {
         const updateSessionSpy = vi.spyOn(sessionService.prototype, "updateSession");
         const request = createTestRequest(TEST_SESSION_ID, {
             authorizationCode: TEST_NEW_AUTH_CODE,
@@ -114,23 +89,7 @@ describe("UpdatedSessionLambda", () => {
         expect(updateSessionSpy).toHaveBeenCalledWith({
             sessionId: TEST_SESSION_ID,
             authorizationCode: TEST_NEW_AUTH_CODE,
-        });
-    });
-
-    it("should call the session service with the new auth code is not in record and but in request", async () => {
-        vi.spyOn(sessionService.prototype, "getSession").mockResolvedValue({
-            sessionId: TEST_SESSION_ID,
-        } as SessionItem);
-        const updateSessionSpy = vi.spyOn(sessionService.prototype, "updateSession");
-        const request = createTestRequest(TEST_SESSION_ID, {
-            authorizationCode: TEST_NEW_AUTH_CODE,
-        } as never as SessionItem);
-        const response = await updateSessionLambda(request, {} as Context);
-
-        expect(response).toStrictEqual({ statusCode: 204 });
-        expect(updateSessionSpy).toHaveBeenCalledWith({
-            sessionId: TEST_SESSION_ID,
-            authorizationCode: TEST_NEW_AUTH_CODE,
+            clientSessionId: undefined,
         });
     });
 });

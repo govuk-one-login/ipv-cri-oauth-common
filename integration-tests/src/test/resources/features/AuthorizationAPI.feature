@@ -33,6 +33,18 @@ Feature: Authorization API
     Then expect a status code of 400 in the response
     And a "Session Validation Exception" error with code 1019 is sent in the response
 
+  Scenario: update the session with an authorization code
+    Given authorization JAR for test user 681
+    And the Session lambda is called
+    When user sends a request to session API
+    Then user gets a session id
+    When user sends a request to session API to set authorization code
+    Then expect a status code of 204 in the response
+    When the Authorisation lambda is called
+    When user sends a valid request to authorization end point
+    Then expect a status code of 200 in the response
+    And the expected authorization code is returned in the response
+
   @access_denied
   Scenario: access-denied is returned on /authorization endpoint
     Given authorization JAR for test user 681

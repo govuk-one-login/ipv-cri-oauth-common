@@ -3,14 +3,17 @@ import { SessionItem } from "@govuk-one-login/cri-types";
 
 const getUpdateSessionBodyMiddleWare = (): MiddlewareObj => {
     const before = async (request: Request) => {
-        if (typeof request.event.body !== "string") {
-            return;
+        let body: SessionItem;
+        if (typeof request.event.body === "string") {
+            body = JSON.parse(request.event.body) as unknown as SessionItem;
+        } else if (typeof request.event.body === "object" && request.event.body) {
+            body = request.event.body as unknown as SessionItem;
+        } else {
+            body = {} as unknown as SessionItem;
         }
 
-        const body = JSON.parse(request.event.body) as unknown as SessionItem;
-
         request.event.body = {
-            ...(body.clientSessionId && { clientSessionId: body.clientSessionId }),
+            clientSessionId: body.clientSessionId,
             ...(body.authorizationCode && { authorizationCode: body.authorizationCode }),
             ...(body.sessionId && { sessionId: body.sessionId }),
         };

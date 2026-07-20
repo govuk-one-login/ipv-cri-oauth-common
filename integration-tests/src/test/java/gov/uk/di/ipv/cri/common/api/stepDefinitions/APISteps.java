@@ -13,6 +13,8 @@ import io.cucumber.java.en.When;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -125,6 +127,13 @@ public class APISteps {
         assertEquals("state-ipv", jsonNode.get("state").get("value").textValue());
     }
 
+    @And("the expected authorization code is returned in the response")
+    public void expected_authorization_code_is_returned_in_the_response() throws IOException {
+        JsonNode jsonNode = objectMapper.readTree(response.body());
+        var storedAuthorizationCode = jsonNode.get("authorizationCode").get("value").textValue();
+        assertEquals(currentAuthorizationCode, storedAuthorizationCode);
+    }
+
     @When("user sends a request to authorization end point with invalid client id")
     public void user_sends_a_request_to_authorization_end_point_with_invalid_client_id()
             throws URISyntaxException, IOException, InterruptedException {
@@ -197,7 +206,7 @@ public class APISteps {
 
     @When("the session data is in the correct tables")
      public void sessionDataIsInTheCorrectTables() {
-        if(OAUTH_TABLES) {
+        if (OAUTH_TABLES) {
             assertTrue(DynamoDBUtil.sessionExists(SESSION_TABLE_NAME, currentSessionId));
             assertTrue(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
         } else {
@@ -205,12 +214,20 @@ public class APISteps {
             assertFalse(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
         }
 
-        if(COMMON_LAMBDAS_TABLES) {
+        if (COMMON_LAMBDAS_TABLES) {
             assertTrue(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
             assertTrue(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
         } else {
             assertFalse(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
             assertFalse(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
         }
+    }
+
+    @When("user sends a request to session API to set authorization code")
+    public void userSendsARequestToSessionAPIToSetAuthorizationCodeTo() throws URISyntaxException, IOException, InterruptedException {
+        currentAuthorizationCode = IpvCoreStubUtil.generateRandomAuthorizationCode();
+        var map = Map.of("authorizationCode", currentAuthorizationCode);
+        sessionRequestBody = objectMapper.writeValueAsString(map);
+        response = IpvCoreStubUtil.sendSessionUpdateRequest(devSessionUri, currentSessionId, sessionRequestBody);
     }
 }

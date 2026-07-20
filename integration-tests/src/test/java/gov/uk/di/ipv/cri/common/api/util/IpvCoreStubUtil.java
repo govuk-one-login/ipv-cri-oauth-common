@@ -1,5 +1,6 @@
 package gov.uk.di.ipv.cri.common.api.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.http.client.utils.URIBuilder;
 
 import java.io.IOException;
@@ -10,6 +11,9 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -116,6 +120,18 @@ public class IpvCoreStubUtil {
         return sendHttpRequest(request);
     }
 
+    public static HttpResponse<String> sendSessionUpdateRequest(String apiPath, String sessionId, String sessionRequestBody) throws URISyntaxException, IOException, InterruptedException {
+        var request =
+                HttpRequest.newBuilder()
+                        .uri(new URIBuilder(getPrivateApiEndpoint()).setPath(apiPath).build())
+                        .setHeader("Accept", "application/json")
+                        .setHeader("Content-Type", "application/json")
+                        .setHeader("session-id", sessionId)
+                        .PUT(HttpRequest.BodyPublishers.ofString(sessionRequestBody))
+                        .build();
+        return sendHttpRequest(request);
+    }
+
     public static HttpResponse<String> sendAuthorizationRequest(
             String apiPath, String sessionId, String clientId)
             throws URISyntaxException, IOException, InterruptedException {
@@ -200,5 +216,12 @@ public class IpvCoreStubUtil {
 
         HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
         return sendHttpRequest(request).body();
+    }
+
+    public static String generateRandomAuthorizationCode() {
+        var secureRandom = new SecureRandom();
+        var randomBytes = new byte[24];
+        secureRandom.nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 }

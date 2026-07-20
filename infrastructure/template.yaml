@@ -871,16 +871,22 @@ Resources:
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
         - DynamoDBWritePolicy:
-            TableName:
-              Ref: SessionTable
-        - DynamoDBReadPolicy:
-            TableName: 
-              Ref: SessionTable
+            TableName: !Ref SessionTable
         - !If
           - IsUsingCommonLambdasTables
           - DynamoDBWritePolicy:
               TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::ImportValue: !Sub ${AuditTxmaStackName}-AuditEventQueueName
+        - !If
+          - IsEncryptionKeyIdRequired
+          - KMSDecryptPolicy:
+              KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
           - !Ref AWS::NoValue
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
