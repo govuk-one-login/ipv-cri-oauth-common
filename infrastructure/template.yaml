@@ -2009,6 +2009,9 @@ Outputs:
   LambdaSessionFunctionName:
     Description: The name of the session function
     Value: !Ref SessionFn
+  LambdaUpdateSessionFunctionName:
+    Description: The name of the update session function
+    Value: !Ref UpdateSessionFn
   LambdaAuthorizationFunctionName:
     Description: The name of the authorisation function
     Value: !Ref AuthorizationFn
