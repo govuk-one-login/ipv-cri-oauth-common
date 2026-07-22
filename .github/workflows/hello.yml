@@ -6,5 +6,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull repository
-        run: echo ${{ secrets.HELLO_WORLD }}
+      - name: Check secret exists
+        run: |
+          if [ -n "${{ secrets.HELLO_WORLD }}" ]; then
+            echo "Secret is set"
+          else
+            echo "Secret is empty or missing"
+          fi
+      - name: Print secret length
+        env:
+          HELLO: ${{ secrets.HELLO_WORLD }}
+        run: |
+          echo "Length: ${#HELLO}"
+      - name: Verify secret
+        env:
+          HELLO: ${{ secrets.HELLO_WORLD }}
+        run: |
+          if [ "$HELLO" = "Hello, World!" ]; then
+            echo "Matches"
+          else
+            echo "Does not match"
+          fi
