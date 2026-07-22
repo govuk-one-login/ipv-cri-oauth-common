@@ -1,0 +1,10 @@
+name: hello.yml
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull repository
+        run: echo ${secrets.hello_world}
