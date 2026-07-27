@@ -30,11 +30,11 @@ Parameters:
 
   CommonLambdasStackName:
     Type: String
-    Description: For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration. 
+    Description: For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration.
     Default: ""
   CommonLambdasUsesCMK:
     Type: String
-    Description: For migration only - The common-lambdas stack in the account uses a CMK. 
+    Description: For migration only - The common-lambdas stack in the account uses a CMK.
     Default: "false"
     AllowedValues:
       - "true"
@@ -167,10 +167,10 @@ Parameters:
     Default: "none"
 
   VpcStackNameOverride:
-    Description: "The name of the stack containing VPC infrastructure. This parameter will be renamed to VpcStackName 
-    in line with a similar parameter set on the pipeline. However, some of the pipelines currently set VpcStackName to 
-    None, which is not a valid value for the parameter in this template. This parameter will be renamed once the 
-    pipelines are updated to set the VpcStackName explicitly, or not at all (thus relying on the default value in the 
+    Description: "The name of the stack containing VPC infrastructure. This parameter will be renamed to VpcStackName
+    in line with a similar parameter set on the pipeline. However, some of the pipelines currently set VpcStackName to
+    None, which is not a valid value for the parameter in this template. This parameter will be renamed once the
+    pipelines are updated to set the VpcStackName explicitly, or not at all (thus relying on the default value in the
     template)."
     Type: String
     Default: "cri-vpc"
@@ -839,9 +839,15 @@ Resources:
 
   CreateAuthCodeFn:
     Type: AWS::Serverless::Function
-    Condition: IsDev
     Properties:
       FunctionName: !Sub "${AWS::StackName}-CreateAuthCodeFn"
+      DeploymentPreference:
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+        Alarms: !If
+          - IsCanaryDeployment
+          - [!Ref CreateAuthCodeFnLambdaErrors, !Ref CreateAuthCodeFnCanary5xxErrors]
+          - [!Ref AWS::NoValue]
       CodeUri: ../lambdas
       Handler: create-auth-code-handler.lambdaHandler
       Runtime: nodejs22.x
@@ -862,7 +868,11 @@ Resources:
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
       Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
         - DynamoDBWritePolicy:
             TableName:
               Ref: SessionTable
@@ -885,6 +895,10 @@ Resources:
               Resource:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/SessionTableName"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/clients/*"
+      ProvisionedConcurrencyConfig: !If
+        - IsProvisionedConcurrencyEnabled
+        - ProvisionedConcurrentExecutions: !Ref LambdaProvisionedConcurrentExecutions
+        - !Ref AWS::NoValue
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -901,15 +915,93 @@ Resources:
         External:
           - "@aws-sdk/*"
 
+  CreateAuthCodeFnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CreateAuthCodeFn}"
+      RetentionInDays: 30
+
+  CreateAuthCodeFnLogGroupSubscriptionFilterCSLS:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: IsCSLSEnabled
+    Properties:
+      DestinationArn: !Ref CSLSDestinationArn
+      FilterPattern: ""
+      LogGroupName: !Ref CreateAuthCodeFnLogGroup
+
   CreateAuthCodeFnPermission:
     Type: AWS::Lambda::Permission
-    Condition: IsDev
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt CreateAuthCodeFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PreMergeDevOnlyApi}/*/*/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
+  CreateAuthCodeFnAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CreateAuthCodeFn.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
+  CreateAuthCodeFnLambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsCanaryDeployment
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-SessionFunctionLambdaErrors"
+      AlarmDescription: !Sub "Trigger an alarm when lambda errors occurs"
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      OKActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      InsufficientDataActions: []
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions:
+        - Name: Resource
+          Value: !Sub "${AWS::StackName}-CreateAuthCodeFn:live"
+        - Name: ExecutedVersion
+          Value: !Sub CreateAuthCodeFn.Version.Version
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  CreateAuthCodeFnCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsCanaryDeployment
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      OKActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      AlarmName: !Sub "${AWS::StackName}-SessionFunctionCanary5xxErrors"
+      AlarmDescription: !Sub "SessionFunction Lambda returning 5xx response."
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: Method
+          Value: POST
+        - Name: ApiName
+          Value: !Ref CriPrivateApiGwName
+        - Name: Stage
+          Value: !Ref Environment
+        - Name: Resource
+          Value: /session
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
 
   DynamoTablesEncryptionKey:
     Type: AWS::KMS::Key
@@ -1853,6 +1945,9 @@ Outputs:
   DbPersonIdentityTableName:
     Description: The name of the person identity table in DynamoDB
     Value: !Ref PersonIdentityTable
+  LambdaCreateAuthCodeFunctioName:
+    Description: The name of the create authentication code lambda
+    Value: !Ref CreateAuthCodeFn
   LambdaSessionFunctionName:
     Description: The name of the session function
     Value: !Ref SessionFn
