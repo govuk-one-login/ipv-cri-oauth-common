@@ -1662,7 +1662,7 @@ Resources:
           version: "1.0"
 
         paths:
-          /pre-merge-create-auth-code:
+          /create-auth-code:
             get:
               parameters:
                 - $ref: "#/components/parameters/SessionHeader"

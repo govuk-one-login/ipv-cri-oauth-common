@@ -152,7 +152,7 @@ public class IpvCoreStubUtil {
                 getHttpRequest(
                         sessionId,
                         new URIBuilder(getPrivateApiEndpoint())
-                                .setPath("dev/pre-merge-create-auth-code")
+                                .setPath("dev/create-auth-code")
                                 .build());
         sendHttpRequest(request);
     }
