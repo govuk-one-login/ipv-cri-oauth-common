@@ -12,6 +12,7 @@ Detailed documentation is available in the docs directory:
 - [Outputs](docs/outputs.md) – Description of all CloudFormation stack outputs and how they can be used.
 - [Integration tests](docs/integration-tests.md) - Guidance on running integration tests locally
 - [Localdev testing](docs/localdev.md) - A guide on testing with localdev CRI stacks
+- [CommonLambdas migration](docs/migration.md) - A guide on migirating to OAuthCommon from CommonLambdas
 
 Further information can also be found [in Confluence](https://govukverify.atlassian.net/wiki/spaces/OJ/pages/6428000475/).
 
