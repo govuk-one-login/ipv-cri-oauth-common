@@ -1,7 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: AWS::Serverless-2016-10-31
+Transform: [AWS::Serverless-2016-10-31, AWS::LanguageExtensions]
 Description: Digital Identity IPV CRI common API
 Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E3033
   AWS::ServerlessRepo::Application:
     Name: di-ipv-cri-oauth-common
     Description: Shared OAuth stack for GOV.UK One Login's Credential Issuers
@@ -9,7 +13,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 0.7.0
+    SemanticVersion: 0.7.1
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -18,6 +22,8 @@ Parameters:
     Description: >
       The audit event name prefix
       Example: IPV_HMRC_RECORD_CHECK_CRI
+      THIS IS THE LANGUAGE EXTENSIONS PUBLISH TEST
+      SEE https://gds.slack.com/archives/C075PRX6SBF/p1784290811868629 FOR CONTEXT
   AuditTxmaStackName:
     Type: String
     Description: The stack containing the TXMA infrastructure
