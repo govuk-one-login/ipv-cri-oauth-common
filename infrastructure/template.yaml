@@ -951,7 +951,7 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Condition: IsCanaryDeployment
     Properties:
-      AlarmName: !Sub "${AWS::StackName}-SessionFunctionLambdaErrors"
+      AlarmName: !Sub "${AWS::StackName}-CreateAuthCodeFnLambdaErrors"
       AlarmDescription: !Sub "Trigger an alarm when lambda errors occurs"
       ActionsEnabled: true
       AlarmActions:
@@ -982,8 +982,8 @@ Resources:
         - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
       OKActions:
         - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
-      AlarmName: !Sub "${AWS::StackName}-SessionFunctionCanary5xxErrors"
-      AlarmDescription: !Sub "SessionFunction Lambda returning 5xx response."
+      AlarmName: !Sub "${AWS::StackName}-CreateAuthCodeFnCanary5xxErrors"
+      AlarmDescription: !Sub "CreateAuthCodeFn Lambda returning 5xx response."
       Namespace: AWS/ApiGateway
       MetricName: 5XXError
       Dimensions:
@@ -1945,7 +1945,7 @@ Outputs:
   DbPersonIdentityTableName:
     Description: The name of the person identity table in DynamoDB
     Value: !Ref PersonIdentityTable
-  LambdaCreateAuthCodeFunctioName:
+  LambdaCreateAuthCodeFunctionName:
     Description: The name of the create authentication code lambda
     Value: !Ref CreateAuthCodeFn
   LambdaSessionFunctionName:

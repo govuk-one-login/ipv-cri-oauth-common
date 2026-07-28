@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { InvalidRequestError } from "./errors";
 import { base64url } from "jose";
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 const getHeaderValue = (event: APIGatewayProxyEvent, desiredHeader: string) => {
     // https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
