@@ -23,6 +23,7 @@ import { CommonConfigKey } from "../../../src/types/config-keys";
 import setRequestedVerificationScoreMiddleware from "../../../src/middlewares/session/set-requested-verification-score-middleware";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { captureMetric } from "@govuk-one-login/cri-metrics";
+import { msToSeconds } from "../../../src/common/utils/time-utils";
 
 vi.mock("../../../src/common/config/config-service");
 vi.mock("../../../src/common/security/jwt-verifier");
@@ -120,7 +121,7 @@ describe("access-token-handler.ts", () => {
         describe("success paths", () => {
             const twentyFourthOfFeb2023InMs = 1677249836658;
             const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
-            const expiry = Math.floor((twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds) / 1000);
+            const expiry = msToSeconds(twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds);
 
             beforeEach(() => {
                 jwtVerifier = new JwtVerifier(jwtVerificationConfig, logger);
@@ -444,8 +445,8 @@ describe("access-token-handler.ts", () => {
                 const twentyFourthOfFeb2023InMs = 1677249836658;
                 vi.spyOn(Date, "now").mockReturnValue(twentyFourthOfFeb2023InMs);
                 const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
-                const expiry = Math.floor((twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds) / 1000);
-                const futureExpiry = Math.floor((twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds) / 1000);
+                const expiry = msToSeconds(twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds);
+                const futureExpiry = msToSeconds(twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds);
 
                 vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(async () => ({
                     Items: [
@@ -489,8 +490,8 @@ describe("access-token-handler.ts", () => {
                 const twentyFourthOfFeb2023InMs = 1677249836658;
                 vi.spyOn(Date, "now").mockReturnValue(twentyFourthOfFeb2023InMs);
                 const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
-                const expiry = Math.floor((twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds) / 1000);
-                const futureExpiry = Math.floor((twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds) / 1000);
+                const expiry = msToSeconds(twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds);
+                const futureExpiry = msToSeconds(twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds);
 
                 vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(async () => ({
                     Items: [

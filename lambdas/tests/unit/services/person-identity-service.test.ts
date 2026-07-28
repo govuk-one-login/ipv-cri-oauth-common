@@ -6,6 +6,7 @@ import { PersonIdentityService } from "../../../src/services/person-identity-ser
 import { PersonIdentityDrivingPermit } from "../../../src/types/person-identity-item";
 
 import { beforeEach, describe, expect, it, vi, test } from "vitest";
+import { msToSeconds } from "../../../src/common/utils/time-utils";
 
 vi.mock("@aws-sdk/lib-dynamodb", () => {
     const mockPut = vi.fn();
@@ -107,7 +108,7 @@ describe("PersonIdentityService", () => {
     });
 
     it("should correctly format personal identity information", async () => {
-        const expectedExpiry: number = Math.floor((Date.now() + 7200 * 1000) / 1000);
+        const expectedExpiry: number = msToSeconds(Date.now() + 7200 * 1000);
         await personIdentityService.savePersonIdentity(mockPerson, sessionId);
 
         expect(mockPutCommand).toHaveBeenCalledWith({
@@ -139,7 +140,7 @@ describe("PersonIdentityService", () => {
             },
         ] as PersonIdentityDrivingPermit[];
 
-        const expectedExpiry: number = Math.floor((Date.now() + 7200 * 1000) / 1000);
+        const expectedExpiry: number = msToSeconds(Date.now() + 7200 * 1000);
         await personIdentityService.savePersonIdentity(mockPersonDeepCopy, sessionId);
 
         expect(mockPutCommand).toHaveBeenCalledWith({
@@ -272,7 +273,7 @@ describe("PersonIdentityService", () => {
     });
 
     it("should avoid formatting blank identities", async () => {
-        const expectedExpiry: number = Math.floor((Date.now() + 7200 * 1000) / 1000);
+        const expectedExpiry: number = msToSeconds(Date.now() + 7200 * 1000);
         const newMockPerson: PersonIdentity = {
             socialSecurityRecord: [],
             name: [],

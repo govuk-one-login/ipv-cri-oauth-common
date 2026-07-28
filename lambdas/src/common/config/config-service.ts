@@ -3,7 +3,7 @@ import { CriAuditConfig } from "../../types/cri-audit-config";
 import { ClientConfigKey, CommonConfigKey, EnvVarConfigKeys } from "../../types/config-keys";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { logger } from "@govuk-one-login/cri-logger";
-import { UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
+import { msToSeconds } from "../utils/time-utils";
 
 const AWS_STACK_NAME_PREFIX = process.env.AWS_STACK_NAME || "";
 const AUTHORIZATION_CODE_TTL = parseNumber(process.env.AUTHORIZATION_CODE_TTL) || 600;
@@ -98,12 +98,12 @@ export class ConfigService {
     }
 
     public getAuthorizationCodeExpirationEpoch() {
-        return Math.floor((Date.now() + AUTHORIZATION_CODE_TTL * 1000) / 1000) as UnixSecondsTimestamp;
+        return msToSeconds(Date.now() + AUTHORIZATION_CODE_TTL * 1000);
     }
 
     public getSessionExpirationEpoch() {
         const sessionTtl = Number.parseInt(this.getConfigEntry(CommonConfigKey.SESSION_TTL), 10);
-        return Math.floor((Date.now() + sessionTtl * 1000) / 1000);
+        return msToSeconds(Date.now() + sessionTtl * 1000);
     }
 
     public getBearerAccessTokenTtl() {
@@ -111,7 +111,7 @@ export class ConfigService {
     }
 
     public getBearerAccessTokenExpirationEpoch(): number {
-        return Math.floor((Date.now() + this.getBearerAccessTokenTtl() * 1000) / 1000);
+        return msToSeconds(Date.now() + this.getBearerAccessTokenTtl() * 1000);
     }
 
     private getSSMParameterName(parameterNameSuffix: string) {

@@ -11,13 +11,13 @@ import { BearerAccessTokenFactory } from "../../../../../src/services/bearer-acc
 import { MockDynamoDBDocument } from "../mocks/mock-dynamo-db-document";
 import { ClientConfigKey, CommonConfigKey } from "../../../../../src/types/config-keys";
 import { logger } from "@govuk-one-login/cri-logger";
+import { msToSeconds } from "../../../../../src/common/utils/time-utils";
 
 const parameterPathPrefix = process.env.AWS_STACK_NAME || "";
 const { JWT_AUDIENCE, JWT_REDIRECT_URI, JWT_SIGNING_ALGORITHM, JWKS_ENDPOINT } = ClientConfigKey;
 const { SESSION_TABLE_NAME, SESSION_TTL } = CommonConfigKey;
 
 export const CreateAccessTokenLambda = (redirectUri: string, componentId: string) => {
-    const msToSeconds = (ms: number) => Math.round(ms / 1000);
     const twoDaysOffset = 2 * 60 * 60 * 24;
 
     const sessionItemStateInDbBeforeTokenRequest: SessionItem = {

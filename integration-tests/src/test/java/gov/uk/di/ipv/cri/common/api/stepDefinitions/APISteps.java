@@ -13,11 +13,12 @@ import io.cucumber.java.en.When;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
+import java.util.Base64;
 import java.util.Map;
-import java.util.UUID;
 import java.util.logging.Logger;
 
 import static gov.uk.di.ipv.cri.common.api.util.IpvCoreStubUtil.sendCreateAuthCodeRequest;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -118,9 +119,12 @@ public class APISteps {
     @And("a valid authorization code is returned in the response")
     public void aValidAuthorizationCodeIsReturnedInTheResponse() throws IOException {
         JsonNode jsonNode = objectMapper.readTree(response.body());
+
         currentAuthorizationCode = jsonNode.get("authorizationCode").get("value").textValue();
-        assertEquals(
-                UUID.fromString(currentAuthorizationCode).toString(), currentAuthorizationCode);
+        assertNotNull(currentAuthorizationCode);
+        assertFalse(currentAuthorizationCode.isEmpty());
+        assertDoesNotThrow(() -> Base64.getUrlDecoder().decode(currentAuthorizationCode));
+
         assertEquals(DEFAULT_REDIRECT_URI, jsonNode.get("redirectionURI").textValue());
         assertEquals("state-ipv", jsonNode.get("state").get("value").textValue());
     }
@@ -192,7 +196,7 @@ public class APISteps {
     @When("session has an authCode")
     public void sessionHasAnAuthCode()
             throws URISyntaxException, IOException, InterruptedException {
-        sendCreateAuthCodeRequest(currentSessionId);
+        response = sendCreateAuthCodeRequest(currentSessionId);
     }
 
     @When("the session data is in the correct tables")

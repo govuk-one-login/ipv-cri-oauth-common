@@ -146,7 +146,7 @@ public class IpvCoreStubUtil {
         return sendHttpRequest(request);
     }
 
-    public static void sendCreateAuthCodeRequest(String sessionId)
+    public static HttpResponse<String> sendCreateAuthCodeRequest(String sessionId)
             throws URISyntaxException, IOException, InterruptedException {
         var request =
                 getHttpRequest(
@@ -154,7 +154,7 @@ public class IpvCoreStubUtil {
                         new URIBuilder(getPrivateApiEndpoint())
                                 .setPath("dev/create-auth-code")
                                 .build());
-        sendHttpRequest(request);
+        return sendHttpRequest(request);
     }
 
     private static HttpRequest getHttpRequest(String sessionId, URI url) {

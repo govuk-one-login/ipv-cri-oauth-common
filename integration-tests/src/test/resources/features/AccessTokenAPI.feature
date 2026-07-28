@@ -6,6 +6,7 @@ Feature: Access Token API
     When user sends a request to session API
     Then user gets a session id
     When session has an authCode
+    And expect a status code of 201 in the response
     And the Authorisation lambda is called
     When user sends a valid request to authorization end point
     Then expect a status code of 200 in the response
@@ -21,6 +22,7 @@ Feature: Access Token API
     When user sends a request to session API
     Then user gets a session id
     When session has an authCode
+    And expect a status code of 201 in the response
     And the Authorisation lambda is called
     When user sends a valid request to authorization end point
     Then expect a status code of 200 in the response

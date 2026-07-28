@@ -4,6 +4,7 @@ import { SSMClient } from "@aws-sdk/client-ssm";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { ConfigService } from "../../../../src/common/config/config-service";
 import { ClientConfigKey, CommonConfigKey } from "../../../../src/types/config-keys";
+import { msToSeconds } from "../../../../src/common/utils/time-utils";
 
 vi.mock("@aws-lambda-powertools/parameters/ssm");
 
@@ -45,7 +46,7 @@ describe("ConfigService", () => {
 
             await configService.init([CommonConfigKey.SESSION_TTL]);
             const epoch = configService.getSessionExpirationEpoch();
-            expect(epoch).toEqual(Math.floor((Date.now() + 100 * 1000) / 1000));
+            expect(epoch).toEqual(msToSeconds(Date.now() + 100 * 1000));
         });
     });
 

@@ -6,6 +6,7 @@ Feature: Database migration
     And user sends a request to session API
     And user gets a session id
     And session has an authCode
+    And expect a status code of 201 in the response
     And the Authorisation lambda is called
     And user sends a valid request to authorization end point
     And expect a status code of 200 in the response
