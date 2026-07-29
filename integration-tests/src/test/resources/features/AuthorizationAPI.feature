@@ -6,6 +6,21 @@ Feature: Authorization API
     When user sends a request to session API
     Then user gets a session id
     When session has an authCode
+    And expect a status code of 201 in the response
+    And the Authorisation lambda is called
+    When user sends a valid request to authorization end point
+    Then expect a status code of 200 in the response
+    And a valid authorization code is returned in the response
+
+  Scenario: a valid authorization code will be generated and reused if called again
+    Given authorization JAR for test user 681
+    And the Session lambda is called
+    When user sends a request to session API
+    Then user gets a session id
+    When session has an authCode
+    And expect a status code of 201 in the response
+    When session has an authCode
+    And expect a status code of 200 in the response
     And the Authorisation lambda is called
     When user sends a valid request to authorization end point
     Then expect a status code of 200 in the response
@@ -17,6 +32,7 @@ Feature: Authorization API
     When user sends a request to session API
     Then user gets a session id
     When session has an authCode
+    And expect a status code of 201 in the response
     And the Authorisation lambda is called
     When user sends a request to authorization end point with invalid client id
     Then expect a status code of 400 in the response
@@ -28,6 +44,7 @@ Feature: Authorization API
     When user sends a request to session API
     Then user gets a session id
     When session has an authCode
+    And expect a status code of 201 in the response
     And the Authorisation lambda is called
     When user sends a request to authorization end point with invalid redirect uri
     Then expect a status code of 400 in the response

@@ -11,6 +11,7 @@ import {
 import { SessionRequestSummary } from "../types/session-request-summary";
 import { CommonConfigKey } from "../types/config-keys";
 import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
+import { msToSeconds } from "../common/utils/time-utils";
 
 export class SessionService {
     constructor(
@@ -76,7 +77,7 @@ export class SessionService {
     }
 
     private hasDateExpired(dateToCheck: number): boolean {
-        return dateToCheck < Math.floor(Date.now() / 1000);
+        return dateToCheck < msToSeconds(Date.now());
     }
 
     public async createAccessTokenCodeAndRemoveAuthCode(sessionItem: SessionItem, accessToken: BearerAccessToken) {
