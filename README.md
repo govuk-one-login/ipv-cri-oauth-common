@@ -15,6 +15,32 @@ Detailed documentation is available in the docs directory:
 
 Further information can also be found [in Confluence](https://govukverify.atlassian.net/wiki/spaces/OJ/pages/6428000475/).
 
+## Known Issue
+
+### Overview
+
+If you change any of the stack parameters that have a knock-on effect to the Lambda functions, for example, changing a value in their environment variables. It updates the $Latest version of the Lambda correctly BUT does not publish a new version. As a result, the live alias remains pointing at the only version (1) and has no effect on running code.
+
+### Impacted CF Parameters;
+- `AuditEventNamePrefix`
+- `AuditTxmaStackName`
+- `CommonLambdasStackName`
+- `CommonLambdasUsesCMK`
+- `CriIdentifier`
+- `CriAudience`
+- `CriVcIssuer`
+- `KeyRotation`
+- `KeyRotationFallback`
+
+### Current Workaround
+
+If you want to change any of the above parameters, follow the below.
+
+1. First publish a new version of OAuthCommon, this can contain no actual changes other than the SAR version. 
+2. Combine changing the OAuthCommon CF parameter(s) within the same merge/deploy as bumping to your new published version.
+
+More information/investigation [here](https://govukverify.atlassian.net/browse/OJ-3834)
+
 ## Hooks
 
 ### Pre-commit
