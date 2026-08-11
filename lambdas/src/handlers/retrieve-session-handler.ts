@@ -45,7 +45,7 @@ export class RetrieveSessionLambda implements LambdaInterface {
 
         return {
             statusCode: 200,
-            body: JSON.stringify(sessionItem.sessionData ?? {}),
+            body: JSON.stringify(sessionItem),
         };
     }
 }

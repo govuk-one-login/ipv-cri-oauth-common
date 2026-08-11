@@ -26,6 +26,7 @@ import static gov.uk.di.ipv.cri.common.api.util.IpvCoreStubUtil.sendCreateAuthCo
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -332,14 +333,21 @@ public class APISteps {
 
     @And("The session should contain {int} fields")
     public void theSessionShouldContainFields(int size) throws IOException {
-        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
-        assertEquals(size, responseBodyMap.size());
+        JsonNode root = objectMapper.readTree(response.body());
+        assertTrue(root.has("sessionData"));
+
+        Map<String, String> sessionData = objectMapper.convertValue(root.get("sessionData"), new TypeReference<>() {});
+        assertNotNull(sessionData);
+        assertEquals(size, sessionData.size());
     }
 
     @And("The session should contain the field {string} with the value {string}")
     public void theSessionShouldContainTheFieldWithTheValue(String field, String value) throws IOException {
-        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
-        assertTrue(responseBodyMap.containsKey(field));
-        assertEquals(value, responseBodyMap.get(field));
+        JsonNode root = objectMapper.readTree(response.body());
+        assertTrue(root.has("sessionData"));
+
+        Map<String, String> sessionData = objectMapper.convertValue(root.get("sessionData"), new TypeReference<>() {});
+        assertTrue(sessionData.containsKey(field));
+        assertEquals(value, sessionData.get(field));
     }
 }

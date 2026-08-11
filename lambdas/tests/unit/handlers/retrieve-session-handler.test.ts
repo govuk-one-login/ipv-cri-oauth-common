@@ -104,7 +104,7 @@ describe("RetrieveSessionLambda", () => {
 
         const result = await lambdaHandler(mockEvent, {} as Context);
 
-        expect(JSON.parse(result.body)).toEqual({});
+        expect(JSON.parse(result.body)).toEqual(sessionItem);
     });
 
     it("should return JSON body of the field is there", async () => {
@@ -122,23 +122,20 @@ describe("RetrieveSessionLambda", () => {
 
         const result = await lambdaHandler(mockEvent, {} as Context);
 
-        expect(JSON.parse(result.body)).toEqual({
-            field1: "field1 contents",
-            field2: "field2 contents",
-            field3: 123456,
-        });
+        expect(JSON.parse(result.body)).toEqual(sessionItem);
     });
 });
 
-const createMockSessionItemData = (data?: Record<string, unknown>): SessionItemData => ({
-    sessionId: TEST_SESSION_ID,
-    attemptCount: 1,
-    clientId: "test-client-id",
-    clientSessionId: "test-client-session-id",
-    createdDate: 0 as UnixMillisecondsTimestamp,
-    expiryDate: 0 as UnixSecondsTimestamp,
-    redirectUri: "https://www.example.com",
-    state: "test-state",
-    subject: "test-subject",
-    ...(data && { sessionData: data }),
-});
+const createMockSessionItemData = (data?: Record<string, unknown>): SessionItemData =>
+    Object.freeze({
+        sessionId: TEST_SESSION_ID,
+        attemptCount: 1,
+        clientId: "test-client-id",
+        clientSessionId: "test-client-session-id",
+        createdDate: 0 as UnixMillisecondsTimestamp,
+        expiryDate: 0 as UnixSecondsTimestamp,
+        redirectUri: "https://www.example.com",
+        state: "test-state",
+        subject: "test-subject",
+        ...(data && { sessionData: data }),
+    });
