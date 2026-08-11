@@ -18,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -55,10 +56,12 @@ public class APISteps {
     private static final String A_STORAGE_ACCESS_TOKEN = aSignedJwt();
     private static final List<String> A_VTR = List.of("P2");
     private String currentAuthorizationCode;
+    private String sessionUpdateRequestBody;
     private String sessionRequestBody;
     private String currentSessionId;
     private HttpResponse<String> response;
     private Map<String, String> responseBodyMap;
+    private Map<String, String> sessionUpdateRequestBodyMap;
 
     @Given("authorization JAR for test user {int}")
     public void setAuthorizationJARForTestUser(int rowNumber)
@@ -300,5 +303,43 @@ public class APISteps {
             assertFalse(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
             assertFalse(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
         }
+    }
+
+    @When("I create a new session update request")
+    public void iCreateANewSessionUpdateRequest() {
+        sessionUpdateRequestBodyMap = new HashMap<>();
+    }
+
+    @And("The session update request contains the field {string} set to {string}")
+    public void theSessionUpdateRequestContainsTheFieldSetTo(String name, String value) {
+        if (value.equals("null")) {
+            sessionUpdateRequestBodyMap.put(name, null);
+        } else {
+            sessionUpdateRequestBodyMap.put(name, value);
+        }
+    }
+
+    @And("I send the session update request")
+    public void iSendTheSessionUpdateRequest() throws IOException, URISyntaxException, InterruptedException {
+        sessionUpdateRequestBody = objectMapper.writeValueAsString(sessionUpdateRequestBodyMap);
+        response = IpvCoreStubUtil.sendUpdateSessionRequest(devSessionUri, currentSessionId, sessionUpdateRequestBody);
+    }
+
+    @When("I retrieve session information")
+    public void iRetrieveSessionInformation() throws URISyntaxException, IOException, InterruptedException {
+        response = IpvCoreStubUtil.sendGetSessionRequest(devSessionUri, currentSessionId);
+    }
+
+    @And("The session should contain {int} fields")
+    public void theSessionShouldContainFields(int size) throws IOException {
+        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
+        assertEquals(size, responseBodyMap.size());
+    }
+
+    @And("The session should contain the field {string} with the value {string}")
+    public void theSessionShouldContainTheFieldWithTheValue(String field, String value) throws IOException {
+        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
+        assertTrue(responseBodyMap.containsKey(field));
+        assertEquals(value, responseBodyMap.get(field));
     }
 }

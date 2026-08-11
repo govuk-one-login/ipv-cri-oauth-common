@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -200,5 +201,29 @@ public class IpvCoreStubUtil {
 
         HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
         return sendHttpRequest(request).body();
+    }
+
+    public static HttpResponse<String> sendUpdateSessionRequest(String apiPath, String sessionId, String requestBody) throws URISyntaxException, IOException, InterruptedException {
+        var request = HttpRequest.newBuilder()
+                .uri(new URIBuilder(getPrivateApiEndpoint()).setPath(apiPath).build())
+                .setHeader("Accept", "application/json")
+                .setHeader("Content-Type", "application/json")
+                .setHeader("session-id", sessionId)
+                .PUT(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        return sendHttpRequest(request);
+    }
+
+    public static HttpResponse<String> sendGetSessionRequest(String apiPath, String sessionId) throws URISyntaxException, IOException, InterruptedException {
+        var request = HttpRequest.newBuilder()
+                .uri(new URIBuilder(getPrivateApiEndpoint()).setPath(apiPath).build())
+                .setHeader("Accept", "application/json")
+                .setHeader("Content-Type", "application/json")
+                .setHeader("session-id", sessionId)
+                .GET()
+                .build();
+
+        return sendHttpRequest(request);
     }
 }
