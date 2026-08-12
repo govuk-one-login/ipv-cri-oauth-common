@@ -13,6 +13,7 @@ import { getSessionId } from "../common/utils/request-utils";
 import initialiseConfigMiddleware from "../middlewares/config/initialise-config-middleware";
 import errorMiddleware from "../middlewares/error/error-middleware";
 import { CommonConfigKey } from "../types/config-keys";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
 const ssmClient = createClient(AwsClientType.SSM);
@@ -63,6 +64,9 @@ export class UpdateSessionDataLambda implements LambdaInterface {
             logger.info("Session data updated", { sessionId });
             return { statusCode: 200, body: "" };
         } catch (err: unknown) {
+            if (err instanceof ConditionalCheckFailedException) {
+                return { statusCode: 404, body: JSON.stringify({ error: "Session not found" }) };
+            }
             return errorPayload(err as Error, logger, "Update Session Data Lambda error occurred");
         }
     }

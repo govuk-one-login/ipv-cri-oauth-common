@@ -1170,13 +1170,13 @@ Resources:
       MetricName: 5XXError
       Dimensions:
         - Name: Method
-          Value: PUT
+          Value: PATCH
         - Name: ApiName
           Value: !Ref CriPrivateApiGwName
         - Name: Stage
           Value: !Ref Environment
         - Name: Resource
-          Value: /session-data
+          Value: /session/data
       Statistic: Sum
       Unit: Count
       Period: 60
@@ -1950,7 +1950,9 @@ Resources:
                 passthroughBehavior: "when_no_match"
                 contentHandling: "CONVERT_TO_TEXT"
                 type: "aws_proxy"
-            put:
+
+          /session/data:
+            patch:
               parameters:
                 - $ref: "#/components/parameters/SessionHeader"
               requestBody:
