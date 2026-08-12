@@ -17,8 +17,6 @@ import { SessionItem } from "@govuk-one-login/cri-types";
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
 const SESSION_RETRIEVED_METRIC = "session_retrieved";
 
-export type SessionItemData = SessionItem & { sessionData?: Record<string, unknown> };
-
 export class RetrieveSessionLambda implements LambdaInterface {
     private readonly sessionService: SessionService;
     private readonly configService: ConfigService;
@@ -39,13 +37,13 @@ export class RetrieveSessionLambda implements LambdaInterface {
     @metrics.logMetrics({ throwOnEmptyMetrics: false, captureColdStartMetric: true })
     public async handler(_event: APIGatewayProxyEvent, _context: unknown): Promise<APIGatewayProxyResult> {
         logger.info("RetrieveSession lambda triggered", { event: _event });
-        const sessionItem = _event.body as never as SessionItemData;
+        const sessionItem = _event.body as never as SessionItem;
 
         captureMetric(SESSION_RETRIEVED_METRIC);
 
         return {
             statusCode: 200,
-            body: JSON.stringify(sessionItem),
+            body: JSON.stringify(sessionItem.sessionData ?? {}),
         };
     }
 }

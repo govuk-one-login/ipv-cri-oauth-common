@@ -209,7 +209,7 @@ public class IpvCoreStubUtil {
                 .setHeader("Accept", "application/json")
                 .setHeader("Content-Type", "application/json")
                 .setHeader("session-id", sessionId)
-                .PUT(HttpRequest.BodyPublishers.ofString(requestBody))
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
         return sendHttpRequest(request);

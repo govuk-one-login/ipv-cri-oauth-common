@@ -323,31 +323,25 @@ public class APISteps {
     @And("I send the session update request")
     public void iSendTheSessionUpdateRequest() throws IOException, URISyntaxException, InterruptedException {
         sessionUpdateRequestBody = objectMapper.writeValueAsString(sessionUpdateRequestBodyMap);
-        response = IpvCoreStubUtil.sendUpdateSessionRequest(devSessionUri, currentSessionId, sessionUpdateRequestBody);
+        response = IpvCoreStubUtil.sendUpdateSessionRequest(devSessionUri + "/data", currentSessionId, sessionUpdateRequestBody);
     }
 
     @When("I retrieve session information")
     public void iRetrieveSessionInformation() throws URISyntaxException, IOException, InterruptedException {
-        response = IpvCoreStubUtil.sendGetSessionRequest(devSessionUri, currentSessionId);
+        response = IpvCoreStubUtil.sendGetSessionRequest(devSessionUri + "/data", currentSessionId);
     }
 
     @And("The session should contain {int} fields")
     public void theSessionShouldContainFields(int size) throws IOException {
-        JsonNode root = objectMapper.readTree(response.body());
-        assertTrue(root.has("sessionData"));
-
-        Map<String, String> sessionData = objectMapper.convertValue(root.get("sessionData"), new TypeReference<>() {});
-        assertNotNull(sessionData);
-        assertEquals(size, sessionData.size());
+        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
+        assertNotNull(responseBodyMap);
+        assertEquals(size, responseBodyMap.size());
     }
 
     @And("The session should contain the field {string} with the value {string}")
     public void theSessionShouldContainTheFieldWithTheValue(String field, String value) throws IOException {
-        JsonNode root = objectMapper.readTree(response.body());
-        assertTrue(root.has("sessionData"));
-
-        Map<String, String> sessionData = objectMapper.convertValue(root.get("sessionData"), new TypeReference<>() {});
-        assertTrue(sessionData.containsKey(field));
-        assertEquals(value, sessionData.get(field));
+        responseBodyMap = objectMapper.readValue(response.body(), new TypeReference<>() {});
+        assertTrue(responseBodyMap.containsKey(field));
+        assertEquals(value, responseBodyMap.get(field));
     }
 }
