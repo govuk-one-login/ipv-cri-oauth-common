@@ -10,10 +10,14 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -44,6 +48,12 @@ public class APISteps {
             Boolean.parseBoolean(System.getenv().getOrDefault("COMMON_LAMBDAS_TABLES", "false"));
     private static final String PERSON_IDENTITY_TABLE_NAME = System.getenv("PERSON_IDENTITY_TABLE_NAME");
     private static final String SESSION_TABLE_NAME = System.getenv("SESSION_TABLE_NAME");
+    private static final boolean IPV_CLAIMS_REQUIRED =
+            "IPV".equals(System.getenv().getOrDefault("AUTHORIZATION_REQUEST_TYPE", "CRI"));
+    private static final String STORAGE_ACCESS_TOKEN_CLAIM =
+            "https://vocab.account.gov.uk/v1/storageAccessToken";
+    private static final String A_STORAGE_ACCESS_TOKEN = aSignedJwt();
+    private static final List<String> A_VTR = List.of("P2");
     private String currentAuthorizationCode;
     private String sessionRequestBody;
     private String currentSessionId;
@@ -197,6 +207,80 @@ public class APISteps {
     public void sessionHasAnAuthCode()
             throws URISyntaxException, IOException, InterruptedException {
         response = sendCreateAuthCodeRequest(currentSessionId);
+    }
+
+    @Given("IPV authorization JAR for test user {int}")
+    public void setIpvAuthorizationJARForTestUser(int rowNumber) throws Exception {
+        setIpvAuthorizationJAR(rowNumber, A_VTR, A_STORAGE_ACCESS_TOKEN);
+    }
+
+    @Given("IPV authorization JAR for test user {int} with vtr {string}")
+    public void setIpvAuthorizationJARWithVtr(int rowNumber, String vtr) throws Exception {
+        setIpvAuthorizationJAR(rowNumber, List.of(vtr), A_STORAGE_ACCESS_TOKEN);
+    }
+
+    @Given("IPV authorization JAR for test user {int} with storage access token {string}")
+    public void setIpvAuthorizationJARWithToken(int rowNumber, String token) throws Exception {
+        setIpvAuthorizationJAR(rowNumber, A_VTR, token);
+    }
+
+    private void setIpvAuthorizationJAR(int rowNumber, List<String> vtr, String storageAccessToken)
+            throws URISyntaxException, IOException, InterruptedException {
+        Map<String, Object> claimsSet =
+                objectMapper.readValue(
+                        IpvCoreStubUtil.getClaimsForUser(rowNumber), new TypeReference<>() {});
+        claimsSet.put("vtr", vtr);
+        claimsSet.put(
+                "claims",
+                Map.of(
+                        "userinfo",
+                        Map.of(
+                                STORAGE_ACCESS_TOKEN_CLAIM,
+                                Map.of("values", List.of(storageAccessToken)))));
+
+        sessionRequestBody =
+                IpvCoreStubUtil.sendCreateSessionRequest(
+                        objectMapper.writeValueAsString(claimsSet));
+    }
+
+    @Then("the session has the IPV claims")
+    public void theSessionHasTheIpvClaims() {
+        Map<String, AttributeValue> session =
+                DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
+
+        assertEquals(A_VTR, session.get("vtr").l().stream().map(AttributeValue::s).toList());
+        assertEquals(A_STORAGE_ACCESS_TOKEN, session.get("storageAccessToken").s());
+    }
+
+    @Then("the session request outcome matches the stack's authorization request type")
+    public void theOutcomeMatchesTheAuthorizationRequestType() throws IOException {
+        if (IPV_CLAIMS_REQUIRED) {
+            assertEquals(400, response.statusCode());
+            aErrorWithCodeIsSentInTheResponse("Session Validation Exception", 1019);
+            return;
+        }
+
+        user_gets_a_session_id();
+
+        Map<String, AttributeValue> session =
+                DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
+        assertFalse(session.containsKey("vtr"));
+        assertFalse(session.containsKey("storageAccessToken"));
+    }
+
+    private static String sessionTableName() {
+        return OAUTH_TABLES ? SESSION_TABLE_NAME : "session-common-cri-api";
+    }
+
+    private static String aSignedJwt() {
+        Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+
+        return encoder.encodeToString(
+                        "{\"typ\":\"JWT\",\"alg\":\"ES256\"}".getBytes(StandardCharsets.UTF_8))
+                + "."
+                + encoder.encodeToString(
+                        "{\"sub\":\"urn:uuid:abc\"}".getBytes(StandardCharsets.UTF_8))
+                + ".a-signature";
     }
 
     @When("the session data is in the correct tables")

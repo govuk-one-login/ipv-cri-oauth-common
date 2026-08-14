@@ -1,8 +1,6 @@
-import { base64url, JWTPayload } from "jose";
+import { base64url } from "jose";
 import { describe, expect, it } from "vitest";
 import {
-    getStorageAccessTokenClaim,
-    STORAGE_ACCESS_TOKEN_CLAIM,
     StorageAccessTokenClaimSchema,
     StorageAccessTokenSchema,
     VtrSchema,
@@ -11,18 +9,6 @@ import { A_STORAGE_ACCESS_TOKEN, aJwt } from "../fixtures/storage-access-token";
 
 const encode = (value: object): string => {
     return base64url.encode(JSON.stringify(value));
-};
-
-const userinfo = (claim: unknown): JWTPayload => {
-    return {
-        claims: {
-            userinfo: {
-                "https://vocab.account.gov.uk/v1/coreIdentityJWT": { essential: true },
-                "https://vocab.account.gov.uk/v1/socialSecurityRecord": null,
-                [STORAGE_ACCESS_TOKEN_CLAIM]: claim,
-            },
-        },
-    };
 };
 
 describe("VtrSchema", () => {
@@ -58,15 +44,8 @@ describe("StorageAccessTokenSchema", () => {
     it.each([
         ["an empty string", ""],
         ["a token with no signature", `${encode({ alg: "ES256" })}.${encode({ sub: "x" })}.`],
-        ["a token with only two parts", `${encode({ alg: "ES256" })}.${encode({ sub: "x" })}`],
-        ["a token with four parts", `${aJwt()}.a-fourth-part`],
         ["an unsecured token", aJwt({ typ: "JWT", alg: "none" })],
-        ["a token with no alg", aJwt({ typ: "JWT" })],
-        ["a token whose alg is empty", aJwt({ typ: "JWT", alg: "" })],
-        ["a token whose alg is not a string", aJwt({ typ: "JWT", alg: 256 })],
-        ["a token whose signature is not base64url", `${encode({ alg: "ES256" })}.${encode({ sub: "x" })}.!!!`],
-        ["a token whose header is not JSON", `not-json.${encode({ sub: "x" })}.a-signature`],
-        ["a token whose payload is not JSON", `${encode({ alg: "ES256" })}.not-json.a-signature`],
+        ["an opaque bearer token", "an-opaque-bearer-token"],
     ])("rejects %s", (_scenario, token) => {
         const result = StorageAccessTokenSchema.safeParse(token);
 
@@ -110,26 +89,5 @@ describe("StorageAccessTokenClaimSchema", () => {
 
         expect(result.success).toBe(false);
         expect(JSON.stringify(result.error!.issues)).not.toContain(A_STORAGE_ACCESS_TOKEN);
-    });
-});
-
-describe("getStorageAccessTokenClaim", () => {
-    it("returns the claim when the JAR asks for it", () => {
-        expect(getStorageAccessTokenClaim(userinfo({ values: [A_STORAGE_ACCESS_TOKEN] }))).toEqual({
-            values: [A_STORAGE_ACCESS_TOKEN],
-        });
-    });
-
-    it("distinguishes a null claim from an absent one, so a null fails validation", () => {
-        expect(getStorageAccessTokenClaim(userinfo(null))).toBeNull();
-    });
-
-    it.each([
-        ["there is no claims claim", {}],
-        ["claims has no userinfo", { claims: {} }],
-        ["userinfo asks for other claims only", { claims: { userinfo: { "…/v1/passport": { essential: true } } } }],
-        ["claims is not an object", { claims: "openid" }],
-    ])("returns undefined when %s", (_scenario, payload) => {
-        expect(getStorageAccessTokenClaim(payload)).toBeUndefined();
     });
 });

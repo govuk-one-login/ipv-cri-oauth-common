@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: false
+      authorization-request-type:
+        description: 'The AuthorizationRequestType the stack was deployed with'
+        required: false
+        type: string
+        default: CRI
     secrets:
       api-gateway-api-key:
         required: false
@@ -78,5 +83,6 @@ jobs:
         SESSION_TABLE_NAME: ${{ fromJson(inputs.stack-outputs).DbSessionTableName }}
         OAUTH_TABLES: ${{ inputs.is-oauth-tables }}
         COMMON_LAMBDAS_TABLES: ${{ inputs.is-common-lambdas-tables }}
+        AUTHORIZATION_REQUEST_TYPE: ${{ inputs.authorization-request-type }}
       working-directory: integration-tests
-      run: ./gradlew cucumber
+      run: ./gradlew cucumber ${{ inputs.authorization-request-type == 'IPV' && '-Ptags=@ipv_claims' || '' }}

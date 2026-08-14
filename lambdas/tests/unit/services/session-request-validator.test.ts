@@ -8,7 +8,7 @@ import {
 import { ClientConfigKey } from "../../../src/types/config-keys";
 import { PersonIdentity } from "../../../src/types/person-identity";
 import { SessionRequestValidationConfig } from "../../../src/types/session-request-validation-config";
-import { STORAGE_ACCESS_TOKEN_CLAIM } from "../../../src/schemas/ipv-request.schema";
+import { STORAGE_ACCESS_TOKEN_CLAIM } from "../../../src/services/ipv-request-service";
 import { A_STORAGE_ACCESS_TOKEN, AN_UNSIGNED_TOKEN } from "../fixtures/storage-access-token";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

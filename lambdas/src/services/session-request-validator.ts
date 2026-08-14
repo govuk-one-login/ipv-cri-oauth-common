@@ -5,12 +5,8 @@ import { ClientConfigKey } from "../types/config-keys";
 import { Logger } from "@aws-lambda-powertools/logger";
 import { SessionValidationError } from "../common/utils/errors";
 import { EvidenceRequestSchema } from "../schemas/evidence-request.schema";
-import {
-    getStorageAccessTokenClaim,
-    STORAGE_ACCESS_TOKEN_CLAIM,
-    StorageAccessTokenClaimSchema,
-    VtrSchema,
-} from "../schemas/ipv-request.schema";
+import { StorageAccessTokenClaimSchema, VtrSchema } from "../schemas/ipv-request.schema";
+import { getStorageAccessTokenClaim, STORAGE_ACCESS_TOKEN_CLAIM } from "./ipv-request-service";
 import { ZodError, ZodType } from "zod";
 
 type ZodIssue = ZodError["issues"][number];

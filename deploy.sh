@@ -6,6 +6,8 @@ stack_name="${1:-}"
 audit_event_name_prefix="${2:-}"
 cri_identifier="${3:-}"
 
+authorization_request_type="${AUTHORIZATION_REQUEST_TYPE:-CRI}"
+
 if ! [[ "$stack_name" ]]; then
   [[ $(aws sts get-caller-identity --query Arn --output text) =~ \/([^\/\.]+)\. ]] && user="${BASH_REMATCH[1]}" || exit
   stack_name="$user-oauth-common"
@@ -30,6 +32,7 @@ sam deploy --stack-name "$stack_name" \
   cri:stack-type=dev \
   --parameter-overrides \
   AuditEventNamePrefix=IPV_COMMON_CRI \
+  AuthorizationRequestType="$authorization_request_type" \
   CriIdentifier=di-ipv-cri-check-hmrc-api \
   CriAudience=https://review-hc.dev.account.gov.uk \
   CriVcIssuer=https://review-hc.dev.account.gov.uk \

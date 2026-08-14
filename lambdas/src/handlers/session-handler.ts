@@ -27,7 +27,8 @@ import { logger } from "@govuk-one-login/cri-logger";
 import { SessionItem } from "@govuk-one-login/cri-types";
 import { CriAuditConfig } from "../types/cri-audit-config";
 import { EvidenceRequest } from "../schemas/evidence-request.schema";
-import { getStorageAccessToken, Vtr } from "../schemas/ipv-request.schema";
+import { Vtr } from "../schemas/ipv-request.schema";
+import { getStorageAccessToken } from "../services/ipv-request-service";
 import { captureMetric, metrics } from "@govuk-one-login/cri-metrics";
 
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
