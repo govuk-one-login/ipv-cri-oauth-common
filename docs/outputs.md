@@ -10,6 +10,7 @@
 | DbSessionTableName | The name of the session table in DynamoDB |
 | DbPersonIdentityTableName | The name of the person identity table in DynamoDB |
 | LambdaSessionFunctionName | The name of the session function |
+| LambdaUpdateSessionDataFunctionName | The name of the update session data function |
 | LambdaAuthorizationFunctionName | The name of the authorisation function |
 | LambdaAccessTokenFunctionName | The name of the access token function |
 | PreMergeDevOnlyApiId | ID of the dev-only OAuth Common API. Only present if `isDev` |

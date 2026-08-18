@@ -57,6 +57,22 @@ jobs:
       ipv-core-stub-basic-auth-user: ${{ secrets.IPV_CORE_STUB_BASIC_AUTH_USER }}
       ipv-core-stub-basic-auth-pwd: ${{ secrets.IPV_CORE_STUB_BASIC_AUTH_PASSWORD }}
 
+  integration-tests-ipv:
+    needs: deploy
+    uses: ./.github/workflows/run-integration-test.yml
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      aws-region: ${{ needs.deploy.outputs.ipv-aws-region }}
+      stack-name: ${{ needs.deploy.outputs.ipv-stack-name }}
+      stack-outputs: ${{ needs.deploy.outputs.ipv-stack-outputs }}
+      authorization-request-type: IPV
+    secrets:
+      api-gateway-api-key: ${{ secrets.APIGW_API_KEY }}
+      ipv-core-stub-basic-auth-user: ${{ secrets.IPV_CORE_STUB_BASIC_AUTH_USER }}
+      ipv-core-stub-basic-auth-pwd: ${{ secrets.IPV_CORE_STUB_BASIC_AUTH_PASSWORD }}
+
   integration-tests-migrating:
     needs: deploy
     uses: ./.github/workflows/run-integration-test.yml

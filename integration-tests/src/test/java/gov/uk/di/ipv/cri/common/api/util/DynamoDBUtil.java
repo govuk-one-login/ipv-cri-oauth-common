@@ -16,7 +16,7 @@ public final class DynamoDBUtil {
 
     private DynamoDBUtil() {}
 
-    public static boolean sessionExists(String tableName, String sessionId) {
+    public static Map<String, AttributeValue> getSession(String tableName, String sessionId) {
         GetItemRequest request = GetItemRequest.builder()
                 .tableName(tableName)
                 .key(Map.of(
@@ -28,6 +28,10 @@ public final class DynamoDBUtil {
 
         GetItemResponse response = CLIENT.getItem(request);
 
-        return response.hasItem() && !response.item().isEmpty();
+        return response.hasItem() ? response.item() : Map.of();
+    }
+
+    public static boolean sessionExists(String tableName, String sessionId) {
+        return !getSession(tableName, sessionId).isEmpty();
     }
 }
