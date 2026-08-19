@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.2
+    SemanticVersion: 1.2.3
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -1344,7 +1344,7 @@ Resources:
         - Name: Stage
           Value: !Ref Environment
         - Name: Resource
-          Value: /session/data
+          Value: /session
       Statistic: Sum
       Unit: Count
       Period: 60
@@ -2083,6 +2083,36 @@ Resources:
                 passthroughBehavior: "when_no_match"
 
           /session:
+            get:
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              responses:
+                "200":
+                  description: "200 response"
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Session"
+                "400":
+                  description: "400 response"
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: "500 response"
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: "Validate both"
+              x-amazon-apigateway-integration:
+                type: "aws_proxy"
+                httpMethod: "POST"
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RetrieveSessionFn.Arn}/invocations
+                passthroughBehavior: "when_no_match"
+
             post:
               parameters:
                 - $ref: "#/components/parameters/AuditHeader"
@@ -2124,36 +2154,6 @@ Resources:
                 type: "aws_proxy"
 
           /session/data:
-            get:
-              parameters:
-                - $ref: "#/components/parameters/SessionHeader"
-              responses:
-                "200":
-                  description: "200 response"
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Session"
-                "400":
-                  description: "400 response"
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: "500 response"
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              x-amazon-apigateway-request-validator: "Validate both"
-              x-amazon-apigateway-integration:
-                type: "aws_proxy"
-                httpMethod: "POST"
-                uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RetrieveSessionFn.Arn}/invocations
-                passthroughBehavior: "when_no_match"
-
             patch:
               parameters:
                 - $ref: "#/components/parameters/SessionHeader"
