@@ -92,7 +92,7 @@ describe("JweDecrypter", () => {
 
         await expect(jweDecrypter.decryptJwe(compactJwe)).rejects.toMatchObject({
             statusCode: 403,
-            message: "Invalid request",
+            message: 'Session Validation Error", "Invalid request',
         });
     });
 
@@ -105,7 +105,7 @@ describe("JweDecrypter", () => {
 
         await expect(jweDecrypter.decryptJwe(compactJwe)).rejects.toMatchObject({
             statusCode: 403,
-            message: "Invalid request",
+            message: 'Session Validation Error", "Invalid request',
         });
 
         expect(logger.warn).toHaveBeenCalledWith({

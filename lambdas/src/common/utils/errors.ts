@@ -78,7 +78,7 @@ export class ServerError extends BaseError {
 
 export class JweDecrypterError extends BaseError {
     constructor(public readonly err: Error) {
-        super("Invalid request");
+        super(`Session Validation Error", "Invalid request`);
         this.statusCode = 403;
         Object.setPrototypeOf(this, JweDecrypterError.prototype);
     }

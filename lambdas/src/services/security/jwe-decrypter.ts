@@ -46,7 +46,7 @@ export class JweDecrypter {
         } catch (error) {
             logger.warn({
                 message: "JWE decryption failed",
-                error,
+                error: error,
             });
             throw new JweDecrypterError(error as Error);
         }
