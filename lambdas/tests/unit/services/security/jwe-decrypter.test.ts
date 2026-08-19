@@ -92,7 +92,25 @@ describe("JweDecrypter", () => {
 
         await expect(jweDecrypter.decryptJwe(compactJwe)).rejects.toMatchObject({
             statusCode: 403,
-            message: expect.stringContaining("Invalid request - JWE decryption failed"),
+            message: "Invalid request",
+        });
+    });
+
+    it("logs the underlying decryption error", async () => {
+        const cryptoError = new Error("authentication tag verification failed");
+
+        vi.mocked(createDecipheriv).mockImplementationOnce(() => {
+            throw cryptoError;
+        });
+
+        await expect(jweDecrypter.decryptJwe(compactJwe)).rejects.toMatchObject({
+            statusCode: 403,
+            message: "Invalid request",
+        });
+
+        expect(logger.warn).toHaveBeenCalledWith({
+            message: "JWE decryption failed",
+            error: cryptoError,
         });
     });
     it("throws an error if number of JWE parts is not 5", async () => {

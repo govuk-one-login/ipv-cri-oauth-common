@@ -44,6 +44,10 @@ export class JweDecrypter {
                 protectedHeaderArray,
             );
         } catch (error) {
+            logger.warn({
+                message: "JWE decryption failed",
+                error,
+            });
             throw new JweDecrypterError(error as Error);
         }
     }
