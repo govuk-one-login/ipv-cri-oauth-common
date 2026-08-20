@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.0
+    SemanticVersion: 1.2.1
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -272,6 +272,8 @@ Globals:
     MemorySize: !FindInMap [EnvConfig, !Ref "Environment", MemorySize]
     Architectures:
       - arm64
+    Layers:
+      - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
     Environment:
       Variables:
         JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
@@ -317,8 +319,6 @@ Resources:
       CodeUri: ../lambdas
       Handler: session-handler.lambdaHandler
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
@@ -523,8 +523,6 @@ Resources:
       CodeUri: ../lambdas
       Handler: authorization-handler.lambdaHandler
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
@@ -690,8 +688,6 @@ Resources:
       Handler: access-token-handler.lambdaHandler
       CodeUri: ../lambdas
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
@@ -864,8 +860,6 @@ Resources:
       CodeUri: ../lambdas
       Handler: create-auth-code-handler.lambdaHandler
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
@@ -1030,8 +1024,6 @@ Resources:
       CodeUri: ../lambdas
       Handler: update-session-data-handler.lambdaHandler
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
@@ -1212,8 +1204,6 @@ Resources:
       CodeUri: ../lambdas
       Handler: retrieve-session-handler.lambdaHandler
       Runtime: nodejs22.x
-      Layers:
-        - arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_313_2_20250404-043044_with_collector_nodejs:1
       VpcConfig:
         SubnetIds: !If
           - IsDevPlatformDeploy
