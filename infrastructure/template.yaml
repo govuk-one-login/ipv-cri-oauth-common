@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.1
+    SemanticVersion: 1.2.2
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -290,7 +290,7 @@ Globals:
           - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}"
           - SecretArn:
               !FindInMap [EnvConfig, !Ref Environment, DynatraceSecretArn]
-        DT_CLUSTER_ID: !Sub
+        DT_CLUSTER: !Sub
           - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}"
           - SecretArn:
               !FindInMap [EnvConfig, !Ref Environment, DynatraceSecretArn]
@@ -302,7 +302,6 @@ Globals:
           - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}"
           - SecretArn:
               !FindInMap [EnvConfig, !Ref Environment, DynatraceSecretArn]
-        DT_OPEN_TELEMETRY_ENABLE_INTEGRATION: "true"
 
 Resources:
   SessionFn:
