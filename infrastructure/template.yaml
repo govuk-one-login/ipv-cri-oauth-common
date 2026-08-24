@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.3
+    SemanticVersion: 1.2.4
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -153,6 +153,13 @@ Parameters:
       - "true"
       - "false"
 
+  LambdaSessionByTokenRetry:
+    Type: String
+    Description: Feature flag for RETRY_SESSION_BY_AUTH_CODE. This adds a retry to session retrieval in the access-token handler and is currently used for investigation.
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
   LambdaCodeSigningConfigArn:
     Type: String
     Description: The ARN of the Code Signing Config to use, provided by the deployment pipeline
@@ -702,6 +709,7 @@ Resources:
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
+          RETRY_SESSION_BY_AUTH_CODE: !Ref LambdaSessionByTokenRetry
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
