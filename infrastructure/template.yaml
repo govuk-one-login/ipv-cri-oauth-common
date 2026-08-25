@@ -1370,6 +1370,173 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
 
+  DeleteSession:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-DeleteSession"
+      DeploymentPreference:
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+        Alarms: !If
+          - IsCanaryDeployment
+          - [ !Ref DeleteSessionLambdaErrors, !Ref DeleteSessionCanary5xxErrors ]
+          - [!Ref AWS::NoValue]
+      CodeUri: ../lambdas
+      Handler: delete-session-handler.lambdaHandler
+      Runtime: nodejs22.x
+      VpcConfig:
+        SubnetIds: !If
+          - IsDevPlatformDeploy
+          - [
+            Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+            Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+            ]
+          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-deleteSessionTS"
+          SESSION_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+            - !Ref SessionTable
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DeleteItem
+              Resource:
+                - !GetAtt SessionTable.Arn
+              Condition:
+                "ForAllValues:StringEquals":
+                  "dynamodb:Attributes":
+                    - sessionId
+                    - sessionData
+        - !If
+          - IsUsingCommonLambdasTables
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+                Condition:
+                  "ForAllValues:StringEquals":
+                    "dynamodb:Attributes":
+                      - sessionId
+                      - sessionData
+          - !Ref AWS::NoValue
+      ProvisionedConcurrencyConfig: !If
+        - IsProvisionedConcurrencyEnabled
+        - ProvisionedConcurrentExecutions: !Ref LambdaProvisionedConcurrentExecutions
+        - !Ref AWS::NoValue
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        OutExtension:
+          - .js=.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        EntryPoints:
+          - src/handlers/delete-session-handler.ts
+        External:
+          - "@aws-sdk/*"
+
+  DeleteSessionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "aws/lambda/${DeleteSession}"
+      RetentionInDays: 30
+
+  DeleteSessionLogGroupSubscriptionFilterCSLS:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: IsCSLSEnabled
+    Properties:
+      DestinationArn: !Ref CSLSDestinationArn
+      FilterPattern: ""
+      LogGroupName: !Ref DeleteSessionLogGroup
+
+  DeleteSessionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DeleteSession.Arn
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
+  DeleteSessionAliasPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DeleteSession.Alias
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
+
+  DeleteSessionLambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsCanaryDeployment
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-DeleteSessionLambdaErrors"
+      AlarmDescription: !Sub "Trigger an alarm when lambda errors occurs"
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      OKActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      InsufficientDataActions: [ ]
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions:
+        - Name: Resource
+          Value: !Sub "${AWS::StackName}-DeleteSession:live"
+        - Name: ExecutedVersion
+          Value: !Sub DeleteSession.Version.Version
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  DeleteSessionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsCanaryDeployment
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      OKActions:
+        - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
+      AlarmName: !Sub "${AWS::StackName}-DeleteSessionCanary5xxErrors"
+      AlarmDescription: !Sub "DeleteSession Lambda returning 5xx response."
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: Method
+          Value: DELETE
+        - Name: ApiName
+          Value: !Ref CriPrivateApiGwName
+        - Name: Stage
+          Value: !Ref Environment
+        - Name: Resource
+          Value: /session
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
   DynamoTablesEncryptionKey:
     Type: AWS::KMS::Key
     Properties:
