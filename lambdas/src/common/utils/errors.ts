@@ -103,9 +103,12 @@ export class JwtSignatureValidationError extends BaseError {
 }
 
 export class SessionNotFoundError extends BaseError {
-    constructor(public readonly id: string) {
+    constructor(
+        public readonly id: string,
+        statusCode = 400,
+    ) {
         super(`Could not find session item with id: ${id}`);
-        this.statusCode = 400; // check
+        this.statusCode = statusCode; // check
         this.code = 1029;
     }
 }

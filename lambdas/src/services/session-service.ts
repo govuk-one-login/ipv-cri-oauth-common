@@ -1,4 +1,11 @@
-import { DynamoDBDocument, GetCommand, PutCommand, QueryCommandInput, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+    DeleteCommand,
+    DynamoDBDocument,
+    GetCommand,
+    PutCommand,
+    QueryCommandInput,
+    UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { BearerAccessToken } from "../types/bearer-access-token";
 import { ConfigService } from "../common/config/config-service";
 import { randomUUID } from "node:crypto";
@@ -127,5 +134,22 @@ export class SessionService {
 
     private getSessionTableName(): string {
         return this.configService.getConfigEntry(CommonConfigKey.SESSION_TABLE_NAME);
+    }
+
+    public async deleteSession(sessionId: string) {
+        try {
+            await this.getSession(sessionId);
+        } catch (error) {
+            if (error instanceof SessionNotFoundError) {
+                throw new SessionNotFoundError(sessionId, 404);
+            }
+            throw error;
+        }
+
+        const deleteCommand = new DeleteCommand({
+            TableName: this.getSessionTableName(),
+            Key: { sessionId: sessionId },
+        });
+        await this.dynamoDbClient.send(deleteCommand);
     }
 }
