@@ -1,7 +1,7 @@
 import { DynamoDBDocument, GetCommand, PutCommand, QueryCommandInput, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { BearerAccessToken } from "../types/bearer-access-token";
 import { ConfigService } from "../common/config/config-service";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
     AuthorizationCodeExpiredError,
     InvalidAccessTokenError,
@@ -13,11 +13,13 @@ import { CommonConfigKey } from "../types/config-keys";
 import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { msToSeconds } from "../common/utils/time-utils";
 import { OAuthSessionItem } from "../types/oauth-session-item";
+import { logger } from "@govuk-one-login/cri-logger";
 
 export class SessionService {
     constructor(
         private readonly dynamoDbClient: DynamoDBDocument,
         private readonly configService: ConfigService,
+        private readonly enableExtraAuthCodeLogging = process.env.ENABLE_EXTRA_AUTH_CODE_LOGGING,
     ) {}
 
     public async getSession(sessionId: string | undefined): Promise<OAuthSessionItem> {
@@ -51,6 +53,8 @@ export class SessionService {
     }
 
     public async getSessionByAuthorizationCode(code: string | undefined): Promise<SessionItem> {
+        if (this.enableExtraAuthCodeLogging === "true") this.safeLogAuthCode(code);
+
         const params: QueryCommandInput = {
             TableName: this.getSessionTableName(),
             IndexName: "authorizationCode-index",
@@ -75,6 +79,18 @@ export class SessionService {
         }
 
         return sessionItem.Items[0] as SessionItem;
+    }
+
+    private safeLogAuthCode(code: string | undefined) {
+        if (code === undefined) {
+            logger.info("Auth code is undefined");
+            throw new InvalidAccessTokenError();
+        } else {
+            const authCodeHash = createHash("sha256").update(code).digest("hex");
+            logger.info("Searching for session using auth code: " + authCodeHash, {
+                authCodeHash: authCodeHash,
+            });
+        }
     }
 
     private hasDateExpired(dateToCheck: number): boolean {
