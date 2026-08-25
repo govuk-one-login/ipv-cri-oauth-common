@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.5
+    SemanticVersion: 1.2.6
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -153,6 +153,13 @@ Parameters:
       - "true"
       - "false"
 
+  LambdaEnableSafeAuthCodeLogging:
+    Type: String
+    Description: Feature flag for ENABLE_EXTRA_AUTH_CODE_LOGGING. This adds a hashed log of the auth code for investgating token errors. 
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
   LambdaSessionByTokenRetry:
     Type: String
     Description: Feature flag for RETRY_SESSION_BY_AUTH_CODE. This adds a retry to session retrieval in the access-token handler and is currently used for investigation.
@@ -711,6 +718,7 @@ Resources:
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
           RETRY_SESSION_BY_AUTH_CODE: !Ref LambdaSessionByTokenRetry
+          ENABLE_EXTRA_AUTH_CODE_LOGGING: !Ref LambdaEnableSafeAuthCodeLogging
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
