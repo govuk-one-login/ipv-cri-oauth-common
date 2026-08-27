@@ -1429,6 +1429,14 @@ Resources:
                       - sessionId
                       - sessionData
           - !Ref AWS::NoValue
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameters
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/SessionTableName"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/SessionTtl"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/clients/*"
       ProvisionedConcurrencyConfig: !If
         - IsProvisionedConcurrencyEnabled
         - ProvisionedConcurrentExecutions: !Ref LambdaProvisionedConcurrentExecutions
@@ -1452,7 +1460,7 @@ Resources:
   DeleteSessionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "aws/lambda/${DeleteSession}"
+      LogGroupName: !Sub "/aws/lambda/${DeleteSession}"
       RetentionInDays: 30
 
   DeleteSessionLogGroupSubscriptionFilterCSLS:
@@ -2337,6 +2345,36 @@ Resources:
                 contentHandling: "CONVERT_TO_TEXT"
                 type: "aws_proxy"
 
+            delete:
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              responses:
+                "404":
+                  description: "404 response"
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: "500 response"
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "204":
+                  description: "204 response"
+              x-amazon-apigateway-request-validator: "Validate both"
+              x-amazon-apigateway-integration:
+                httpMethod: "DELETE"
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteSession.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "204"
+                passthroughBehavior: "when_no_match"
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws_proxy"
+
           /session/data:
             patch:
               parameters:
@@ -2563,6 +2601,9 @@ Outputs:
   LambdaAccessTokenFunctionName:
     Description: The name of the access token function
     Value: !Ref AccessTokenFn
+  LambdaDeleteSessionFunctionName:
+    Description: The name of the delete session function
+    Value: !Ref DeleteSession
   PreMergeDevOnlyApiId:
     Condition: IsDev
     Description: ID of the dev-only OAuth Common API
