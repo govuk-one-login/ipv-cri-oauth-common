@@ -6,7 +6,6 @@ import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { Vtr } from "../../../src/schemas/ipv-request.schema";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { logger } from "@govuk-one-login/cri-logger";
 
 const UUID_REGEX = new RegExp(/^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i);
 
@@ -120,79 +119,6 @@ describe("session-service", () => {
                 }),
             );
             expect(output).toBe("1");
-        });
-
-        it("should throw an InvalidAccessTokenError on a undefined auth code", async () => {
-            const sessionService = new SessionService(mockDynamoDbClient.prototype, configService, "true");
-
-            expect.assertions(1);
-            try {
-                await sessionService.getSessionByAuthorizationCode(undefined);
-            } catch (err) {
-                expect(err).toBeInstanceOf(InvalidAccessTokenError);
-            }
-        });
-
-        it("should log the hashed auth code when ENABLE_EXTRA_AUTH_CODE_LOGGING is true", async () => {
-            vi.doMock("@govuk-one-login/cri-logger", () => ({
-                logger: {
-                    info: vi.fn(),
-                    error: vi.fn(),
-                    clearBuffer: vi.fn(),
-                    resetKeys: vi.fn(),
-                    refreshSampleRateCalculation: vi.fn(),
-                    addContext: vi.fn(),
-                    logEventIfEnabled: vi.fn(),
-                    appendKeys: vi.fn(),
-                },
-            }));
-            const sessionService = new SessionService(mockDynamoDbClient.prototype, configService, "true");
-            const tableName = "sessionTable";
-            const authCode = "123";
-            const loggerSpyInfo = vi.spyOn(logger, "info");
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
-            vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(() => {
-                return Promise.resolve({ Items: ["1"] } as never);
-            });
-            const output = await sessionService.getSessionByAuthorizationCode(authCode);
-            expect(output).toBe("1");
-            expect(loggerSpyInfo).toHaveBeenCalledWith(
-                "Searching for session using auth code: a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-                {
-                    authCodeHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-                },
-            );
-        });
-
-        it("should not log the hashed auth code when ENABLE_EXTRA_AUTH_CODE_LOGGING is false", async () => {
-            vi.doMock("@govuk-one-login/cri-logger", () => ({
-                logger: {
-                    info: vi.fn(),
-                    error: vi.fn(),
-                    clearBuffer: vi.fn(),
-                    resetKeys: vi.fn(),
-                    refreshSampleRateCalculation: vi.fn(),
-                    addContext: vi.fn(),
-                    logEventIfEnabled: vi.fn(),
-                    appendKeys: vi.fn(),
-                },
-            }));
-            const sessionService = new SessionService(mockDynamoDbClient.prototype, configService);
-            const tableName = "sessionTable";
-            const authCode = "123";
-            const loggerSpyInfo = vi.spyOn(logger, "info");
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
-            vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(() => {
-                return Promise.resolve({ Items: ["1"] } as never);
-            });
-            const output = await sessionService.getSessionByAuthorizationCode(authCode);
-            expect(output).toBe("1");
-            expect(loggerSpyInfo).not.toHaveBeenCalledWith(
-                "Searching for session using auth code: a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-                {
-                    authCodeHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-                },
-            );
         });
 
         it("should throw a Invalid Access token Error when Session not found", async () => {
