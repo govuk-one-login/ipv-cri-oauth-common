@@ -27,7 +27,6 @@
 | IPVCoreStubJwksEndpoint | No       | `""` (empty string)   | Stubbed JWKS endpoint for non-prod environments                                | `https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json` |
 | KeyRotation | No       | `true`                | Feature flag for ENV_VAR_FEATURE_FLAG_KEY_ROTATION                             | `false` |
 | KeyRotationFallback | No       | `false`               | Feature flag for ENV_VAR_FEATURE_FLAG_KEY_ROTATION_LEGACY_KEY_FALLBACK         | `true` |
-| LambdaEnableSafeAuthCodeLogging | No       | `false`                | Feature flag for ENABLE_EXTRA_AUTH_CODE_LOGGING. This adds a safe log of the auth code for investgating token errors.  | `true` |
 | LambdaCodeSigningConfigArn | No       | `none`                | The ARN of the Code Signing Config to use, provided by the deployment pipeline | `An AWS ARN` |
 | LambdaDeploymentPreference | No       | `AllAtOnce`           | Stubbed JWKS endpoint for non-prod environments                                | `AllAtOnce` |
 | LambdaProvisionedConcurrentExecutions | No       | 0                     | Stubbed JWKS endpoint for non-prod environments                                | 1 |

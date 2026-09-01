@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.7
+    SemanticVersion: 1.2.8
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -153,13 +153,6 @@ Parameters:
       - "true"
       - "false"
 
-  LambdaEnableSafeAuthCodeLogging:
-    Type: String
-    Description: Feature flag for ENABLE_EXTRA_AUTH_CODE_LOGGING. This adds a hashed log of the auth code for investgating token errors. 
-    Default: "false"
-    AllowedValues:
-      - "true"
-      - "false"
   LambdaCodeSigningConfigArn:
     Type: String
     Description: The ARN of the Code Signing Config to use, provided by the deployment pipeline
@@ -710,7 +703,6 @@ Resources:
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
-          ENABLE_EXTRA_AUTH_CODE_LOGGING: !Ref LambdaEnableSafeAuthCodeLogging
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
