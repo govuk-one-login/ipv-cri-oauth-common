@@ -11,6 +11,8 @@ import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { APIGatewayProxyEvent, Context } from "aws-lambda";
 // import { SessionService } from "../../../src/services/session-service";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
+import { OAuthSessionItem } from "../../../src/types/oauth-session-item";
+import { UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 
 vi.mock("@govuk-one-login/cri-metrics", () => ({
     metrics: {
@@ -36,7 +38,7 @@ vi.mock("@govuk-one-login/cri-logger", () => ({
 const SESSION_DELETED_METRIC = "session_deleted";
 const TEST_SESSION_ID = "test-session-id";
 
-describe("DeleteSessionLambda", () => {
+describe.only("DeleteSessionLambda", () => {
     let deleteSessionLambda: DeleteSessionLambda;
     let lambdaHandler: MiddyfiedHandler;
     // let sessionService: SessionService;
@@ -48,7 +50,7 @@ describe("DeleteSessionLambda", () => {
 
         configService = new ConfigService(vi.fn() as unknown as SSMProvider);
         mockDynamoDbClient = vi.mocked(DynamoDBDocument);
-        mockDynamoDbClient.prototype.send = vi.fn().mockResolvedValue({});
+        mockDynamoDbClient.prototype.delete = vi.fn().mockResolvedValue({});
 
         deleteSessionLambda = new DeleteSessionLambda(mockDynamoDbClient.prototype);
         // sessionService = new SessionService(mockDynamoDbClient.prototype, configService);
@@ -73,11 +75,57 @@ describe("DeleteSessionLambda", () => {
     });
 
     it("should delete the given session from the table and return a 200 response", async () => {
+        const sessionData = createMockSessionItemData();
+        vi.spyOn(mockDynamoDbClient.prototype, "put").mockImplementationOnce(async () => ({
+            Item: sessionData,
+        }));
+
         const mockEvent = {
             headers: { "session-id": TEST_SESSION_ID },
         } as unknown as APIGatewayProxyEvent;
 
         const result = await lambdaHandler(mockEvent, {} as Context);
+        console.log(`DEBUG: RESULT: ${result.statusCode}`);
+        console.log(`DEBUG: RESULT: ${result.body}`);
+
         expect(result.statusCode).toBe(200);
+        expect(result.body).toContain("SUCCESS");
+        // expect(sessionService.deleteSession(TEST_SESSION_ID)).toHaveBeenCalledTimes(1);
+        expect(mockDynamoDbClient.prototype.delete).toHaveBeenCalledTimes(1);
+    });
+
+    it("should fail if a session does not exist", async () => {
+        const sessionData = createMockSessionItemData();
+        vi.spyOn(mockDynamoDbClient.prototype, "send").mockImplementationOnce(async () => ({
+            Item: sessionData,
+        }));
+
+        const mockEvent = {
+            headers: { "session-id": "bad-session-id" },
+        } as unknown as APIGatewayProxyEvent;
+
+        const result = await lambdaHandler(mockEvent, {} as Context);
+        expect(result.statusCode).toBe(400);
     });
 });
+
+const createMockSessionItemData = (data?: Record<string, string>): OAuthSessionItem =>
+    Object.freeze({
+        sessionId: TEST_SESSION_ID,
+        attemptCount: 1,
+        clientId: "test-client-id",
+        clientSessionId: "test-client-session-id",
+        createdDate: 0 as UnixMillisecondsTimestamp,
+        expiryDate: 0 as UnixSecondsTimestamp,
+        redirectUri: "https://www.example.com",
+        state: "test-state",
+        subject: "test-subject",
+        vtr: ["P2"] as OAuthSessionItem["vtr"],
+        storageAccessToken: "test-storage-access-token",
+        persistentSessionId: "test-persistent-session-id",
+        context: "test-context",
+        accessToken: "secret-access-token",
+        authorizationCode: "secret-auth-code",
+        clientIpAddress: "192.168.1.1",
+        ...(data && { sessionData: data }),
+    });

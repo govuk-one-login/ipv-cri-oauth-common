@@ -13,7 +13,7 @@ import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import { SessionService } from "../services/session-service";
 import { getSessionId } from "../common/utils/request-utils";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
-
+import { errorPayload } from "../common/utils/errors";
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
 const DELETE_SESSION_METRIC = "session_deleted";
 
@@ -43,12 +43,15 @@ export class DeleteSessionLambda implements LambdaInterface {
         logger.info(`DeleteSession lambda triggered`, { event: event });
         const sessionId = getSessionId(event);
 
-        await this.sessionService.deleteSession(sessionId);
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify("hello there"),
-        };
+        try {
+            await this.sessionService.deleteSession(sessionId);
+            return {
+                statusCode: 200,
+                body: JSON.stringify("SUCCESS"),
+            };
+        } catch (err: unknown) {
+            return errorPayload(err as Error, logger, "Delete Session Lambda error occurred");
+        }
     }
 }
 
