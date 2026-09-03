@@ -437,4 +437,82 @@ describe("session-service", () => {
             expect(output.storageAccessToken).toBeUndefined();
         });
     });
+
+    describe("deleteSession", () => {
+        it("should delete the session if the session exists", async () => {
+            const tableName = "session-table-name";
+            const sessionId = "test-session-id";
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockDynamoDbClient.prototype, "send")
+                .mockResolvedValueOnce({ Item: { sessionId } } as never)
+                .mockResolvedValueOnce({} as never);
+
+            await sessionService.deleteSession(sessionId);
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(2);
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
+                1,
+                expect.objectContaining({
+                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                }),
+            );
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
+                2,
+                expect.objectContaining({
+                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                }),
+            );
+        });
+
+        it("should throw a 404 SessionNotFoundError and not delete the session if the session does not exist", async () => {
+            const tableName = "session-table-name";
+            const sessionId = "does-not-exist";
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockResolvedValueOnce({} as never);
+
+            expect.assertions(4);
+            try {
+                await sessionService.deleteSession(sessionId);
+            } catch (err) {
+                expect(err).toBeInstanceOf(SessionNotFoundError);
+                expect((err as SessionNotFoundError).statusCode).toBe(404);
+                expect((err as SessionNotFoundError).message).toBe(`Could not find session item with id: ${sessionId}`);
+                expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(1);
+            }
+        });
+
+        it("should propagate a session lookup error without deleting the session", async () => {
+            const tableName = "session-table-name";
+            const sessionId = "test-session-id";
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockRejectedValueOnce(
+                new Error("DynamoDB unavailable") as never,
+            );
+
+            expect.assertions(3);
+            try {
+                await sessionService.deleteSession(sessionId);
+            } catch (err) {
+                expect(err).toBeInstanceOf(Error);
+                expect(err).not.toBeInstanceOf(SessionNotFoundError);
+                expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(1);
+            }
+        });
+
+        it("should propagate an error thrown by the delete command", async () => {
+            const tableName = "session-table-name";
+            const sessionId = "test-session-id";
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockDynamoDbClient.prototype, "send")
+                .mockResolvedValueOnce({ Item: { sessionId } } as never)
+                .mockRejectedValueOnce(new Error("DynamoDB unavailable") as never);
+
+            await expect(sessionService.deleteSession(sessionId)).rejects.toThrow("DynamoDB unavailable");
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
+                2,
+                expect.objectContaining({
+                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                }),
+            );
+        });
+    });
 });

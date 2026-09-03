@@ -151,6 +151,15 @@ export class SessionService {
     }
 
     public async deleteSession(sessionId: string) {
+        try {
+            await this.getSession(sessionId);
+        } catch (error) {
+            if (error instanceof SessionNotFoundError) {
+                throw new SessionNotFoundError(sessionId, 404);
+            }
+            throw error;
+        }
+
         const deleteCommand = new DeleteCommand({
             TableName: this.getSessionTableName(),
             Key: { sessionId: sessionId },
