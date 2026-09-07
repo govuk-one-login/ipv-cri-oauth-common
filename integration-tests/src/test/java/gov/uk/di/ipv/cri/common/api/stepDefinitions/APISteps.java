@@ -36,6 +36,7 @@ public class APISteps {
     private static String devSessionUri;
     private static String devAuthorizationUri;
     public static String devAccessTokenUri;
+    private static String devDeleteSessionUri;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String REDIRECT_URI = System.getenv("IPV_CORE_STUB_URL");
     private static final String DEFAULT_REDIRECT_URI =
@@ -375,5 +376,25 @@ public class APISteps {
         DynamoDBUtil.expireAuthorizationCode(
                 sessionTableName(),
                 currentSessionId);
+    }
+
+    @Given("the DeleteSession lambda is called")
+    public void setDeleteSessionEndpoint() {
+        devDeleteSessionUri = ENVIRONMENT + "/session";
+    }
+
+    @When("user sends a request to the delete session endpoint")
+    public void userSendsRequestToDeleteSession() throws IOException, URISyntaxException, InterruptedException {
+        response = IpvCoreStubUtil.sendDeleteSessionRequest(devDeleteSessionUri, currentSessionId);
+    }
+
+    @When("user sends a request to delete a non-existent session")
+    public void userSendsDeleteSessionRequestWithNonExistentSession() throws IOException, URISyntaxException, InterruptedException {
+        response = IpvCoreStubUtil.sendDeleteSessionRequest(devDeleteSessionUri, "bad-session-id");
+    }
+
+    @And("the session no longer exists in the session table")
+    public void sessionIdNoLongerExistsInSessionTable() {
+        assertFalse(DynamoDBUtil.sessionExists(sessionTableName(), currentSessionId));
     }
 }
