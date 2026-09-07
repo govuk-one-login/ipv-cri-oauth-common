@@ -1392,13 +1392,9 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:DeleteItem
+                - dynamodb:GetItem
               Resource:
                 - !GetAtt SessionTable.Arn
-              Condition:
-                "ForAllValues:StringEquals":
-                  "dynamodb:Attributes":
-                    - sessionId
-                    - sessionData
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
         - !If
@@ -1412,13 +1408,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:DeleteItem
+                  - dynamodb:GetItem
                 Resource:
                   - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
-                Condition:
-                  "ForAllValues:StringEquals":
-                    "dynamodb:Attributes":
-                      - sessionId
-                      - sessionData
           - !Ref AWS::NoValue
         - Statement:
             - Effect: Allow
@@ -2340,6 +2332,8 @@ Resources:
               parameters:
                 - $ref: "#/components/parameters/SessionHeader"
               responses:
+                "200":
+                  description: "200 response"
                 "404":
                   description: "404 response"
                   content:
@@ -2352,18 +2346,15 @@ Resources:
                     application/json:
                       schema:
                         $ref: "#/components/schemas/Error"
-                "200":
-                  description: "200 response"
               x-amazon-apigateway-request-validator: "Validate both"
               x-amazon-apigateway-integration:
-                httpMethod: "DELETE"
+                httpMethod: "POST"
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteSession.Arn}/invocations
                 responses:
                   default:
-                    statusCode: "204"
+                    statusCode: "200"
                 passthroughBehavior: "when_no_match"
-                contentHandling: "CONVERT_TO_TEXT"
                 type: "aws_proxy"
 
           /session/data:
