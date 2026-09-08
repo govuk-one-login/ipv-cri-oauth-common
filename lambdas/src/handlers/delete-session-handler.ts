@@ -55,7 +55,7 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     .use(
         errorMiddleware(logger, {
             metric_name: DELETE_SESSION_METRIC,
-            message: "DeleteSession Lambda error occurred",
+            message: "DeleteSessionFn Lambda error occurred",
         }),
     )
     .use(

@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.8
+    SemanticVersion: 1.2.9
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -883,9 +883,17 @@ Resources:
         - DynamoDBWritePolicy:
             TableName:
               Ref: SessionTable
+        - DynamoDBReadPolicy:
+            TableName:
+              Ref: SessionTable
         - !If
           - IsUsingCommonLambdasTables
           - DynamoDBWritePolicy:
+              TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+          - !Ref AWS::NoValue
+        - !If
+          - IsUsingCommonLambdasTables
+          - DynamoDBReadPolicy:
               TableName: !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
           - !Ref AWS::NoValue
         - KMSDecryptPolicy:
@@ -1354,16 +1362,16 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
 
-  DeleteSession:
+  DeleteSessionFn:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub "${AWS::StackName}-DeleteSession"
+      FunctionName: !Sub "${AWS::StackName}-DeleteSessionFn"
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
         Alarms: !If
           - IsCanaryDeployment
-          - [ !Ref DeleteSessionLambdaErrors, !Ref DeleteSessionCanary5xxErrors ]
+          - [ !Ref DeleteSessionFnLambdaErrors, !Ref DeleteSessionFnCanary5xxErrors ]
           - [!Ref AWS::NoValue]
       CodeUri: ../lambdas
       Handler: delete-session-handler.lambdaHandler
@@ -1372,13 +1380,13 @@ Resources:
         SubnetIds: !If
           - IsDevPlatformDeploy
           - [
-            Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
-            Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
             ]
           - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
-          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-deleteSessionTS"
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-deleteSessionFn"
           SESSION_TABLE: !If
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
@@ -1440,43 +1448,43 @@ Resources:
         External:
           - "@aws-sdk/*"
 
-  DeleteSessionLogGroup:
+  DeleteSessionFnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${DeleteSession}"
+      LogGroupName: !Sub "/aws/lambda/${DeleteSessionFn}"
       RetentionInDays: 30
 
-  DeleteSessionLogGroupSubscriptionFilterCSLS:
+  DeleteSessionFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
     Condition: IsCSLSEnabled
     Properties:
       DestinationArn: !Ref CSLSDestinationArn
       FilterPattern: ""
-      LogGroupName: !Ref DeleteSessionLogGroup
+      LogGroupName: !Ref DeleteSessionFnLogGroup
 
-  DeleteSessionPermission:
+  DeleteSessionFnPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt DeleteSession.Arn
+      FunctionName: !GetAtt DeleteSessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
       SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
-  DeleteSessionAliasPermissions:
+  DeleteSessionFnAliasPermissions:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref DeleteSession.Alias
+      FunctionName: !Ref DeleteSessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
       SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
-  DeleteSessionLambdaErrors:
+  DeleteSessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
     Condition: IsCanaryDeployment
     Properties:
-      AlarmName: !Sub "${AWS::StackName}-DeleteSessionLambdaErrors"
+      AlarmName: !Sub "${AWS::StackName}-DeleteSessionFnLambdaErrors"
       AlarmDescription: !Sub "Trigger an alarm when lambda errors occurs"
       ActionsEnabled: true
       AlarmActions:
@@ -1489,16 +1497,16 @@ Resources:
       Statistic: Sum
       Dimensions:
         - Name: Resource
-          Value: !Sub "${AWS::StackName}-DeleteSession:live"
+          Value: !Sub "${AWS::StackName}-DeleteSessionFn:live"
         - Name: ExecutedVersion
-          Value: !Sub DeleteSession.Version.Version
+          Value: !Sub DeleteSessionFn.Version.Version
       Period: 60
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
 
-  DeleteSessionCanary5xxErrors:
+  DeleteSessionFnCanary5xxErrors:
     Type: AWS::CloudWatch::Alarm
     Condition: IsCanaryDeployment
     Properties:
@@ -1507,8 +1515,8 @@ Resources:
         - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
       OKActions:
         - Fn::ImportValue: !Sub "${BuildNotificationStackName}-WarningAlertsTopicArn"
-      AlarmName: !Sub "${AWS::StackName}-DeleteSessionCanary5xxErrors"
-      AlarmDescription: !Sub "DeleteSession Lambda returning 5xx response."
+      AlarmName: !Sub "${AWS::StackName}-DeleteSessionFnCanary5xxErrors"
+      AlarmDescription: !Sub "DeleteSessionFn Lambda returning 5xx response."
       Namespace: AWS/ApiGateway
       MetricName: 5XXError
       Dimensions:
@@ -2350,7 +2358,7 @@ Resources:
               x-amazon-apigateway-integration:
                 httpMethod: "POST"
                 uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteSession.Arn}/invocations
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteSessionFn.Arn}/invocations
                 responses:
                   default:
                     statusCode: "200"
@@ -2585,7 +2593,7 @@ Outputs:
     Value: !Ref AccessTokenFn
   LambdaDeleteSessionFunctionName:
     Description: The name of the delete session function
-    Value: !Ref DeleteSession
+    Value: !Ref DeleteSessionFn
   PreMergeDevOnlyApiId:
     Condition: IsDev
     Description: ID of the dev-only OAuth Common API
