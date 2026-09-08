@@ -58,7 +58,7 @@ describe("DeleteSessionLambda", () => {
             .use(
                 errorMiddleware(logger, {
                     metric_name: SESSION_DELETED_METRIC,
-                    message: "DeleteSession Lambda error occurred",
+                    message: "DeleteSessionFn Lambda error occurred",
                 }),
             )
             .use(

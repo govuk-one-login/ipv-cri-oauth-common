@@ -11,9 +11,12 @@ import initialiseConfigMiddleware from "../../../src/middlewares/config/initiali
 import { logger } from "@govuk-one-login/cri-logger";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import { UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
+import { SessionService } from "../../../src/services/session-service";
+import { SessionNotFoundError } from "../../../src/common/utils/errors";
 
 vi.mock("@aws-sdk/lib-dynamodb");
 vi.mock("../../../src/common/config/config-service");
+vi.mock("../../src/common/config/session-service");
 vi.mock("@govuk-one-login/cri-metrics", () => ({
     metrics: {
         addDimension: vi.fn(),
@@ -42,6 +45,7 @@ describe("CreateAuthCodeLambda", () => {
     let lambdaHandler: MiddyfiedHandler;
     let configService: MockedObject<typeof ConfigService>;
     let mockDynamoDbClient: MockedObject<typeof DynamoDBDocument>;
+    let mockSessionService: MockedObject<typeof SessionService>;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -50,13 +54,22 @@ describe("CreateAuthCodeLambda", () => {
         mockDynamoDbClient = vi.mocked(DynamoDBDocument);
         mockDynamoDbClient.prototype.send = vi.fn().mockResolvedValue({});
 
+        mockSessionService = vi.mocked(SessionService);
+        vi.spyOn(mockSessionService.prototype, "getSession").mockResolvedValue({
+            sessionId: "test-session-id",
+        } as never);
+
         vi.spyOn(configService.prototype, "init").mockResolvedValue();
         vi.spyOn(configService.prototype, "getConfigEntry").mockReturnValue("test-session-table");
         vi.spyOn(configService.prototype, "getAuthorizationCodeExpirationEpoch").mockReturnValue(
             1000 as UnixSecondsTimestamp,
         );
 
-        createAuthCodeLambda = new CreateAuthCodeLambda(configService.prototype, mockDynamoDbClient.prototype);
+        createAuthCodeLambda = new CreateAuthCodeLambda(
+            configService.prototype,
+            mockDynamoDbClient.prototype,
+            mockSessionService.prototype,
+        );
 
         lambdaHandler = middy(createAuthCodeLambda.handler.bind(createAuthCodeLambda))
             .use(
@@ -108,5 +121,20 @@ describe("CreateAuthCodeLambda", () => {
 
         expect(result.statusCode).toBe(500);
         expect(JSON.parse(result.body)).toEqual(expect.objectContaining({ message: "Server Error" }));
+    });
+
+    it("should reject creating an auth code for a non-existent session ID", async () => {
+        vi.spyOn(mockSessionService.prototype, "getSession").mockRejectedValue(
+            new SessionNotFoundError("test-session-id", 404),
+        );
+
+        const mockEvent = {
+            headers: { "session-id": "test-session-id" },
+        } as unknown as APIGatewayProxyEvent;
+
+        const result = await lambdaHandler(mockEvent, {} as Context);
+
+        expect(result.statusCode).toBe(404);
+        expect(mockDynamoDbClient.prototype.send).not.toHaveBeenCalled();
     });
 });
