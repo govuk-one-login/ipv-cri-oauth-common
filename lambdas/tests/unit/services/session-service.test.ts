@@ -1,7 +1,12 @@
 import { SessionService } from "../../../src/services/session-service";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
-import { InvalidAccessTokenError, SessionNotFoundError } from "../../../src/common/utils/errors";
+import {
+    InvalidAccessTokenError,
+    SessionNotFoundError,
+    SessionExpiredError,
+    AuthorizationCodeExpiredError,
+} from "../../../src/common/utils/errors";
 import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { Vtr } from "../../../src/schemas/ipv-request.schema";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
