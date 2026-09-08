@@ -1410,6 +1410,8 @@ Resources:
               - "sessionId"
               - "redirectUri"
               - "clientId"
+              - "expiryDate"
+              - "authorizationCodeExpiryDate"
             ProjectionType: "INCLUDE"
         - IndexName: "access-token-index"
           KeySchema:

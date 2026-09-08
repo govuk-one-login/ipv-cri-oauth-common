@@ -219,6 +219,60 @@ describe("session-service", () => {
             expect(output.sessionId).toEqual(expect.stringMatching(UUID_REGEX));
         });
 
+        it("should throw SessionExpiredError when session expiry date has passed", async () => {
+            const authCode = "123";
+
+            vi.spyOn(mockDynamoDbClient.prototype, "query").mockResolvedValue({
+                Items: [
+                    {
+                        sessionId: "1",
+                        expiryDate: 1,
+                        authorizationCodeExpiryDate: 9999999999,
+                    },
+                ],
+            } as never);
+
+            await expect(sessionService.getSessionByAuthorizationCode(authCode)).rejects.toBeInstanceOf(
+                SessionExpiredError,
+            );
+        });
+
+        it("should throw AuthorizationCodeExpiredError when authorization code expiry date has passed", async () => {
+            const authCode = "123";
+
+            vi.spyOn(mockDynamoDbClient.prototype, "query").mockResolvedValue({
+                Items: [
+                    {
+                        sessionId: "1",
+                        expiryDate: 9999999999,
+                        authorizationCodeExpiryDate: 1,
+                    },
+                ],
+            } as never);
+
+            await expect(sessionService.getSessionByAuthorizationCode(authCode)).rejects.toBeInstanceOf(
+                AuthorizationCodeExpiredError,
+            );
+        });
+
+        it("should return the session when expiry dates are valid", async () => {
+            const authCode = "123";
+
+            const sessionItem = {
+                sessionId: "1",
+                expiryDate: 9999999999,
+                authorizationCodeExpiryDate: 9999999999,
+            };
+
+            vi.spyOn(mockDynamoDbClient.prototype, "query").mockResolvedValue({
+                Items: [sessionItem],
+            } as never);
+
+            const result = await sessionService.getSessionByAuthorizationCode(authCode);
+
+            expect(result).toEqual(sessionItem);
+        });
+
         it("should save the session data with context to dynamo db", async () => {
             const mockSessionRequestSummary = {
                 clientId: "test-jwt-client-id",
