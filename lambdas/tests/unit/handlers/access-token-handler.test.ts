@@ -98,8 +98,8 @@ describe("access-token-handler.ts", () => {
                     requestValidator: accessTokenRequestValidator,
                 }),
             )
-            .use(getSessionByAuthCodeMiddleware({ sessionService: sessionService }))
-            .use(getSessionByIdMiddleware({ sessionService: sessionService }))
+            .use(getSessionByAuthCodeMiddleware({ sessionService }))
+            .use(getSessionByIdMiddleware({ sessionService, validateAuthorizationCodeExpiry: true }))
             .use(setGovUkSigningJourneyIdMiddleware(logger))
             .use(setRequestedVerificationScoreMiddleware(logger));
     });
