@@ -25,9 +25,39 @@ describe("getSessionByIdMiddleware", () => {
 
         return getSessionByIdMiddleware({
             sessionService,
+            validateAuthorizationCodeExpiry: true,
         });
     };
 
+    it("does not validate authorisation code expiry unless requested", async () => {
+        const sessionService = {
+            getSession,
+            validateSessionAndAuthorizationCodeExpiry,
+        } as unknown as SessionService;
+
+        const middleware = getSessionByIdMiddleware({
+            sessionService,
+        });
+
+        getSession.mockResolvedValue(sessionItem);
+
+        const request: Request = {
+            event: {
+                body: {
+                    sessionId: "session-123",
+                },
+            } as unknown as APIGatewayProxyEvent,
+            context: {} as Context,
+            response: undefined,
+            error: null,
+            internal: {},
+        };
+
+        await middleware.before!(request);
+
+        expect(getSession).toHaveBeenCalledWith("session-123");
+        expect(validateSessionAndAuthorizationCodeExpiry).not.toHaveBeenCalled();
+    });
     it("loads the session and validates expiry", async () => {
         const middleware = loadMiddleware();
 

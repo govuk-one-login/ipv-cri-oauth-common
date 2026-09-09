@@ -127,6 +127,11 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
             ],
         }),
     )
-    .use(getSessionByIdMiddleware({ sessionService: handlerClass.getSessionService() }))
+    .use(
+        getSessionByIdMiddleware({
+            sessionService: handlerClass.getSessionService(),
+            validateAuthorizationCodeExpiry: true,
+        }),
+    )
     .use(setGovUkSigningJourneyIdMiddleware(logger))
     .use(setRequestedVerificationScoreMiddleware(logger));
