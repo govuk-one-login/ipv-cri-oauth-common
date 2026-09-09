@@ -12,6 +12,7 @@ const getSessionByIdMiddleware = (opts: { sessionService: SessionService }): Mid
         const sessionId = event?.body?.sessionId || getSessionId(event);
         const sessionItem = await options.sessionService.getSession(sessionId);
 
+        options.sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem);
         request.event = {
             ...request.event,
             body: {
@@ -19,7 +20,6 @@ const getSessionByIdMiddleware = (opts: { sessionService: SessionService }): Mid
                 ...event.body,
             },
         };
-        await request.event;
     };
 
     return {

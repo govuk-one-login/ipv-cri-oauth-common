@@ -1,7 +1,12 @@
 import { SessionService } from "../../../src/services/session-service";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
-import { InvalidAccessTokenError, SessionNotFoundError } from "../../../src/common/utils/errors";
+import {
+    InvalidAccessTokenError,
+    SessionNotFoundError,
+    AuthorizationCodeExpiredError,
+    SessionExpiredError,
+} from "../../../src/common/utils/errors";
 import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { Vtr } from "../../../src/schemas/ipv-request.schema";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
@@ -137,6 +142,44 @@ describe("session-service", () => {
         });
     });
 
+    describe("validateSessionAndAuthorizationCodeExpiry", () => {
+        it("should throw SessionExpiredError when session expiry date has passed", () => {
+            vi.spyOn(Date, "now").mockReturnValue(1000000000000);
+
+            const sessionItem = {
+                expiryDate: 1,
+                authorizationCodeExpiryDate: 9999999999,
+            } as SessionItem;
+
+            expect(() => sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem)).toThrow(
+                SessionExpiredError,
+            );
+        });
+
+        it("should throw AuthorizationCodeExpiredError when authorization code expiry date has passed", () => {
+            vi.spyOn(Date, "now").mockReturnValue(1000000000000);
+
+            const sessionItem = {
+                expiryDate: 9999999999,
+                authorizationCodeExpiryDate: 1,
+            } as SessionItem;
+
+            expect(() => sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem)).toThrow(
+                AuthorizationCodeExpiredError,
+            );
+        });
+
+        it("should not throw when expiry dates are valid", () => {
+            vi.spyOn(Date, "now").mockReturnValue(1000);
+
+            const sessionItem = {
+                expiryDate: 9999999999,
+                authorizationCodeExpiryDate: 9999999999,
+            } as SessionItem;
+
+            expect(() => sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem)).not.toThrow();
+        });
+    });
     describe("createAccessTokenCode", () => {
         it("should update dynamo db with the access token", async () => {
             const sessionItem = {
