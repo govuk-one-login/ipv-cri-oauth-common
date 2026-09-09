@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.9
+    SemanticVersion: 1.2.8
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -1410,8 +1410,6 @@ Resources:
               - "sessionId"
               - "redirectUri"
               - "clientId"
-              - "expiryDate"
-              - "authorizationCodeExpiryDate"
             ProjectionType: "INCLUDE"
         - IndexName: "access-token-index"
           KeySchema:
