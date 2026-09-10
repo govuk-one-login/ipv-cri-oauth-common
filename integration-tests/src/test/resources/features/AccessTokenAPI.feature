@@ -31,3 +31,20 @@ Feature: Access Token API
     When user sends a request to access token end point with incorrect authorization code
     Then expect a status code of 403 in the response
     And a "Access token expired" error with code 1026 is sent in the response
+
+  Scenario: no access token is returned when authorization code has expired
+    Given authorization JAR for test user 681
+    And the Session lambda is called
+    When user sends a request to session API
+    Then user gets a session id
+    When session has an authCode
+    And expect a status code of 201 in the response
+    And the Authorisation lambda is called
+    When user sends a valid request to authorization end point
+    Then expect a status code of 200 in the response
+    And a valid authorization code is returned in the response
+    And the authorization code has expired
+    And the AccessToken lambda is called
+    When user sends a request to access token end point
+    Then expect a status code of 403 in the response
+    And a "Authorization code expired" error with code 1027 is sent in the response

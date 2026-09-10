@@ -369,4 +369,11 @@ public class APISteps {
         Map<String, Object> responseBody = objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
         assertTrue(responseBody.containsKey(field));
     }
+
+    @And("the authorization code has expired")
+    public void theAuthorizationCodeHasExpired() {
+        DynamoDBUtil.expireAuthorizationCode(
+                sessionTableName(),
+                currentSessionId);
+    }
 }

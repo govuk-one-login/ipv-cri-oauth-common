@@ -66,15 +66,17 @@ export class SessionService {
             throw new InvalidAccessTokenError();
         }
 
-        if (this.hasDateExpired(sessionItem.Items[0].expiryDate)) {
+        return sessionItem.Items[0] as SessionItem;
+    }
+
+    public validateSessionAndAuthorizationCodeExpiry(sessionItem: SessionItem): void {
+        if (this.hasDateExpired(sessionItem.expiryDate)) {
             throw new SessionExpiredError();
         }
 
-        if (this.hasDateExpired(sessionItem.Items[0].authorizationCodeExpiryDate)) {
+        if (this.hasDateExpired(sessionItem.authorizationCodeExpiryDate)) {
             throw new AuthorizationCodeExpiredError();
         }
-
-        return sessionItem.Items[0] as SessionItem;
     }
 
     private hasDateExpired(dateToCheck: number): boolean {

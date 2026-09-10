@@ -2,16 +2,20 @@ import { MiddlewareObj, Request } from "@middy/core";
 import { SessionService } from "../../services/session-service";
 import { getSessionId } from "../../common/utils/request-utils";
 
-const defaults = {};
+type GetSessionByIdMiddlewareOptions = {
+    sessionService: SessionService;
+    validateAuthorizationCodeExpiry?: boolean;
+};
 
-const getSessionByIdMiddleware = (opts: { sessionService: SessionService }): MiddlewareObj => {
-    const options = { ...defaults, ...opts };
-
+const getSessionByIdMiddleware = (options: GetSessionByIdMiddlewareOptions): MiddlewareObj => {
     const before = async (request: Request) => {
         const event = request.event;
         const sessionId = event?.body?.sessionId || getSessionId(event);
         const sessionItem = await options.sessionService.getSession(sessionId);
 
+        if (options.validateAuthorizationCodeExpiry) {
+            options.sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem);
+        }
         request.event = {
             ...request.event,
             body: {
@@ -19,7 +23,6 @@ const getSessionByIdMiddleware = (opts: { sessionService: SessionService }): Mid
                 ...event.body,
             },
         };
-        await request.event;
     };
 
     return {

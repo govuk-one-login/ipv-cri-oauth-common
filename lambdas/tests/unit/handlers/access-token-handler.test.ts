@@ -98,8 +98,8 @@ describe("access-token-handler.ts", () => {
                     requestValidator: accessTokenRequestValidator,
                 }),
             )
-            .use(getSessionByAuthCodeMiddleware({ sessionService: sessionService }))
-            .use(getSessionByIdMiddleware({ sessionService: sessionService }))
+            .use(getSessionByAuthCodeMiddleware({ sessionService }))
+            .use(getSessionByIdMiddleware({ sessionService, validateAuthorizationCodeExpiry: true }))
             .use(setGovUkSigningJourneyIdMiddleware(logger))
             .use(setRequestedVerificationScoreMiddleware(logger));
     });
@@ -444,25 +444,37 @@ describe("access-token-handler.ts", () => {
             it("should return http 403 if the authorizationCodeExpiryDate has expired", async () => {
                 const twentyFourthOfFeb2023InMs = 1677249836658;
                 vi.spyOn(Date, "now").mockReturnValue(twentyFourthOfFeb2023InMs);
+
                 const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
                 const expiry = msToSeconds(twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds);
                 const futureExpiry = msToSeconds(twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds);
 
-                vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(async () => ({
+                const fullSessionItem = {
+                    expiryDate: futureExpiry,
+                    sessionId: code,
+                    authorizationCodeExpiryDate: expiry,
+                    clientId: "1",
+                    clientSessionId: "1",
+                    redirectUri,
+                    accessToken: "",
+                    accessTokenExpiryDate: futureExpiry,
+                    authorizationCode: code,
+                };
+
+                vi.spyOn(mockDynamoDbClient.prototype, "query").mockResolvedValue({
                     Items: [
                         {
-                            expiryDate: futureExpiry,
                             sessionId: code,
-                            authorizationCodeExpiryDate: expiry,
                             clientId: "1",
-                            clientSessionId: "1",
-                            redirectUri: redirectUri,
-                            accessToken: "",
-                            accessTokenExpiryDate: expiry,
+                            redirectUri,
                             authorizationCode: code,
                         },
                     ],
-                }));
+                });
+
+                vi.spyOn(mockDynamoDbClient.prototype, "send").mockResolvedValue({
+                    Item: fullSessionItem,
+                });
 
                 const output = await lambdaHandler(
                     {
@@ -489,25 +501,37 @@ describe("access-token-handler.ts", () => {
             it("should return http 403 if the session has expired", async () => {
                 const twentyFourthOfFeb2023InMs = 1677249836658;
                 vi.spyOn(Date, "now").mockReturnValue(twentyFourthOfFeb2023InMs);
+
                 const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
                 const expiry = msToSeconds(twentyFourthOfFeb2023InMs - sevenDaysInMilliseconds);
                 const futureExpiry = msToSeconds(twentyFourthOfFeb2023InMs + sevenDaysInMilliseconds);
 
-                vi.spyOn(mockDynamoDbClient.prototype, "query").mockImplementation(async () => ({
+                const fullSessionItem = {
+                    sessionId: code,
+                    expiryDate: expiry,
+                    authorizationCodeExpiryDate: futureExpiry,
+                    clientId: "1",
+                    clientSessionId: "1",
+                    redirectUri,
+                    accessToken: "",
+                    accessTokenExpiryDate: futureExpiry,
+                    authorizationCode: code,
+                };
+
+                vi.spyOn(mockDynamoDbClient.prototype, "query").mockResolvedValue({
                     Items: [
                         {
                             sessionId: code,
-                            expiryDate: expiry,
-                            authorizationCodeExpiryDate: futureExpiry,
                             clientId: "1",
-                            clientSessionId: "1",
-                            redirectUri: redirectUri,
-                            accessToken: "",
-                            accessTokenExpiryDate: futureExpiry,
+                            redirectUri,
                             authorizationCode: code,
                         },
                     ],
-                }));
+                });
+
+                vi.spyOn(mockDynamoDbClient.prototype, "send").mockResolvedValue({
+                    Item: fullSessionItem,
+                });
 
                 const output = await lambdaHandler(
                     {
@@ -526,7 +550,6 @@ describe("access-token-handler.ts", () => {
                 expect(output.body).toContain("Session expired");
                 expect(metricsSpy).toHaveBeenCalledWith("accesstoken", 0);
             });
-
             it("should return http 403 when there is more than 1 session item", async () => {
                 vi.spyOn(mockJwtVerifierFactory.prototype, "create").mockReturnValueOnce(jwtVerifier);
                 vi.spyOn(jwtVerifier, "verify").mockReturnValueOnce(Promise.resolve(expect.anything()));
