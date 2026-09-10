@@ -161,6 +161,10 @@ Parameters:
     Type: String
     Description: Specifies the configuration to enable gradual Lambda deployments. This value is picked up from the LambdaCanaryDeployment on the pipeline.
     Default: "AllAtOnce"
+  LambdaVersionHash:
+    Type: String
+    Description: Commit SHA used to force Lambda version publication
+    Default: "initial"
   LambdaProvisionedConcurrentExecutions:
     Type: Number
     Description: Provisioned concurrency for the Lambdas (0 = disabled)
@@ -346,6 +350,7 @@ Resources:
           VC_ISSUER: !Ref CriVcIssuer
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -540,6 +545,7 @@ Resources:
           ENV_VAR_AUTHORIZATION_REQUEST_TYPE: !Ref AuthorizationRequestType
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -705,6 +711,7 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -877,6 +884,7 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -1041,6 +1049,7 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -1221,6 +1230,7 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
