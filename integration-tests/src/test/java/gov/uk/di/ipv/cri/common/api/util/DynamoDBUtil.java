@@ -34,4 +34,25 @@ public final class DynamoDBUtil {
     public static boolean sessionExists(String tableName, String sessionId) {
         return !getSession(tableName, sessionId).isEmpty();
     }
+
+    public static void expireAuthorizationCode(
+            String tableName,
+            String sessionId) {
+
+        CLIENT.updateItem(builder -> builder
+                .tableName(tableName)
+                .key(Map.of(
+                        "sessionId",
+                        AttributeValue.builder()
+                                .s(sessionId)
+                                .build()))
+                .updateExpression(
+                        "SET authorizationCodeExpiryDate = :expiry")
+                .expressionAttributeValues(
+                        Map.of(
+                                ":expiry",
+                                AttributeValue.builder()
+                                        .n("1")
+                                        .build())));
+    }
 }
