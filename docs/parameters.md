@@ -30,10 +30,10 @@
 | LambdaCodeSigningConfigArn | No  | `none`                | The ARN of the Code Signing Config to use, provided by the deployment pipeline | `An AWS ARN`   |
 | LambdaDeploymentPreference | No  | `AllAtOnce`           | Stubbed JWKS endpoint for non-prod environments                                | `AllAtOnce`    |
 | LambdaProvisionedConcurrentExecutions | No  | 0                     | Stubbed JWKS endpoint for non-prod environments                                | 1              |
+| LambdaVersionHash | No  | `initial` | Commit SHA used to force Lambda version publication when deploying nested applications. Passed to AutoPublishCodeSha256 to ensure a new Lambda version is published when configuration changes occur.| `abc123def456` | 
 | LambdaVpcConfiguration | Yes | -                     | Stubbed JWKS endpoint for non-prod environments                                | `di-devplatform-deploy` |
 | PermissionsBoundaryArn | No  | `none`                | The ARN of the permissions boundary to apply when creating IAM roles           | `An AWS ARN`   |
 | VpcStackNameOverride | No  | `cri-vpc`             | The name of the stack containing VPC infrastructure                            | `cri-vpc`      |
-| LambdaVersionHash | No  | `initial` | Commit SHA used to force Lambda version publication when deploying nested applications. Passed to AutoPublishCodeSha256 to ensure a new Lambda version is published when configuration changes occur.| `abc123def456` | 
 > **Note:** The `VpcStackNameOverride` parameter will be renamed to `VpcStackName`
 in line with a similar parameter set on the pipeline. However, some of the pipelines currently set `VpcStackName` to
 `None`, which is not a valid value for the parameter in the template. This parameter will be renamed once the
