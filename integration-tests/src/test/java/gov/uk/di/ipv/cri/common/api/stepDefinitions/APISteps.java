@@ -378,19 +378,15 @@ public class APISteps {
                 currentSessionId);
     }
 
-    @Given("the DeleteSession lambda is called")
-    public void setDeleteSessionEndpoint() {
-        devDeleteSessionUri = ENVIRONMENT + "/session";
-    }
-
-    @When("user sends a request to the delete session endpoint")
+    @When("the delete session endpoint is called")
     public void userSendsRequestToDeleteSession() throws IOException, URISyntaxException, InterruptedException {
+        devDeleteSessionUri = ENVIRONMENT + "/session";
         response = IpvCoreStubUtil.sendDeleteSessionRequest(devDeleteSessionUri, currentSessionId);
     }
 
-    @When("user sends a request to delete a non-existent session")
-    public void userSendsDeleteSessionRequestWithNonExistentSession() throws IOException, URISyntaxException, InterruptedException {
-        response = IpvCoreStubUtil.sendDeleteSessionRequest(devDeleteSessionUri, "bad-session-id");
+    @Given("a session that does not exist")
+    public void aSessionDoesNotExist() {
+        currentSessionId = "bad-session-id";
     }
 
     @And("the session no longer exists in the session table")

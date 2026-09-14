@@ -12,30 +12,13 @@ import { CommonConfigKey } from "../types/config-keys";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import { SessionService } from "../services/session-service";
 import { getSessionId } from "../common/utils/request-utils";
-import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
+const configService = new ConfigService(new SSMProvider({ awsSdkV3Client: createClient(AwsClientType.SSM) }));
 const DELETE_SESSION_METRIC = "session_deleted";
 
 export class DeleteSessionLambda implements LambdaInterface {
-    private readonly configService: ConfigService;
-    private readonly sessionService: SessionService;
-
-    getConfigService() {
-        return this.configService;
-    }
-    getSessionService() {
-        return this.sessionService;
-    }
-
-    constructor(
-        private readonly dynamoDbClient: DynamoDBDocument,
-        configService?: ConfigService,
-        sessionService?: SessionService,
-    ) {
-        this.configService =
-            configService || new ConfigService(new SSMProvider({ awsSdkV3Client: createClient(AwsClientType.SSM) }));
-        this.sessionService = sessionService || new SessionService(dynamoDbClient, this.configService);
-    }
+    constructor(private readonly sessionService: SessionService) {}
 
     @metrics.logMetrics({ throwOnEmptyMetrics: false, captureColdStartMetric: true })
     public async handler(event: APIGatewayProxyEvent, _context: unknown) {
@@ -49,7 +32,7 @@ export class DeleteSessionLambda implements LambdaInterface {
     }
 }
 
-const handlerClass = new DeleteSessionLambda(dynamoDbClient);
+const handlerClass = new DeleteSessionLambda(new SessionService(dynamoDbClient, configService));
 
 export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     .use(
@@ -60,7 +43,7 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     )
     .use(
         initialiseConfigMiddleware({
-            configService: handlerClass.getConfigService(),
+            configService: configService,
             config_keys: [CommonConfigKey.SESSION_TABLE_NAME, CommonConfigKey.SESSION_TTL],
         }),
     )

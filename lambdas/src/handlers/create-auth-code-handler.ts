@@ -9,7 +9,7 @@ import middy from "@middy/core";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { AwsClientType, createClient } from "../common/aws-client-factory";
 import { ConfigService } from "../common/config/config-service";
-import { errorPayload, SessionNotFoundError } from "../common/utils/errors";
+import { errorPayload } from "../common/utils/errors";
 import { generateAuthCode, getSessionId } from "../common/utils/request-utils";
 import { msToSeconds } from "../common/utils/time-utils";
 import initialiseConfigMiddleware from "../middlewares/config/initialise-config-middleware";
@@ -40,20 +40,19 @@ export class CreateAuthCodeLambda implements LambdaInterface {
             const authorizationCode = generateAuthCode();
             sessionId = getSessionId(event);
 
-            await this.sessionService.getSession(sessionId);
-
             await this.dynamoDbClient.send(
                 new UpdateCommand({
                     TableName: this.configService.getConfigEntry(CommonConfigKey.SESSION_TABLE_NAME),
                     Key: { sessionId: sessionId },
                     UpdateExpression: "SET authorizationCode=:authCode, authorizationCodeExpiryDate=:authCodeExpiry",
                     ConditionExpression:
-                        "attribute_not_exists(authorizationCode) OR authorizationCodeExpiryDate < :now",
+                        "attribute_exists(sessionId) AND attribute_not_exists(authorizationCode) OR authorizationCodeExpiryDate < :now",
                     ExpressionAttributeValues: {
                         ":authCode": authorizationCode,
                         ":authCodeExpiry": this.configService.getAuthorizationCodeExpirationEpoch(),
                         ":now": msToSeconds(Date.now()),
                     },
+                    ReturnValuesOnConditionCheckFailure: "ALL_OLD",
                 }),
             );
 
@@ -64,14 +63,14 @@ export class CreateAuthCodeLambda implements LambdaInterface {
             return { statusCode: 201 };
         } catch (err: unknown) {
             if (err instanceof ConditionalCheckFailedException) {
+                if (!err.Item) {
+                    logger.info(`Session doesn't exist`, { sessionId });
+                    return { statusCode: 404 };
+                }
                 logger.info(`AuthCode already exists for session`, { sessionId });
                 metrics.addDimension("state", "UNCHANGED");
                 captureMetric(AUTH_CODE_CREATED_METRIC);
                 return { statusCode: 200 };
-            }
-            if (err instanceof SessionNotFoundError) {
-                logger.info(`Session doesn't exist`);
-                throw new SessionNotFoundError(sessionId, 404);
             }
             return errorPayload(err as Error, logger, "Create AuthCode Lambda error occurred");
         }

@@ -108,7 +108,7 @@ export class SessionNotFoundError extends BaseError {
         statusCode = 400,
     ) {
         super(`Could not find session item with id: ${id}`);
-        this.statusCode = statusCode; // check
+        this.statusCode = statusCode;
         this.code = 1029;
     }
 }

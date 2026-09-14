@@ -5,8 +5,7 @@ Feature: Delete Session API
     And the Session lambda is called
     When user sends a request to session API
     Then user gets a session id
-    And the DeleteSession lambda is called
-    When user sends a request to the delete session endpoint
+    When the delete session endpoint is called
     Then expect a status code of 200 in the response
     And the session no longer exists in the session table
 
@@ -15,8 +14,7 @@ Feature: Delete Session API
     And the Session lambda is called
     When user sends a request to session API
     Then user gets a session id
-    And the DeleteSession lambda is called
-    When user sends a request to the delete session endpoint
+    When the delete session endpoint is called
     Then expect a status code of 200 in the response
     And the session no longer exists in the session table
 
@@ -36,6 +34,6 @@ Feature: Delete Session API
 
 
   Scenario: deleting a session that does not exist returns a 404
-    Given the DeleteSession lambda is called
-    When user sends a request to delete a non-existent session
+    Given a session that does not exist
+    When the delete session endpoint is called
     Then expect a status code of 404 in the response

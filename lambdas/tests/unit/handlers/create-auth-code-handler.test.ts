@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, MockedObject, vi } from "vitest";
 import { APIGatewayProxyEvent, Context } from "aws-lambda";
 import { CreateAuthCodeLambda } from "../../../src/handlers/create-auth-code-handler";
 import middy, { MiddyfiedHandler } from "@middy/core";
-import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocument, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { CommonConfigKey } from "../../../src/types/config-keys";
@@ -12,11 +12,10 @@ import { logger } from "@govuk-one-login/cri-logger";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import { UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { SessionService } from "../../../src/services/session-service";
-import { SessionNotFoundError } from "../../../src/common/utils/errors";
 
 vi.mock("@aws-sdk/lib-dynamodb");
 vi.mock("../../../src/common/config/config-service");
-vi.mock("../../src/common/config/session-service");
+vi.mock("../../../src/common/config/session-service");
 vi.mock("@govuk-one-login/cri-metrics", () => ({
     metrics: {
         addDimension: vi.fn(),
@@ -97,9 +96,13 @@ describe("CreateAuthCodeLambda", () => {
         expect(result.statusCode).toBe(201);
     });
     it("should not update an authorization code for the session if it already exists", async () => {
-        mockDynamoDbClient.prototype.send = vi
-            .fn()
-            .mockRejectedValue(new ConditionalCheckFailedException({ $metadata: {}, message: "Condition not met" }));
+        mockDynamoDbClient.prototype.send = vi.fn().mockRejectedValue(
+            new ConditionalCheckFailedException({
+                $metadata: {},
+                message: "Condition not met",
+                Item: { sessionId: { S: "test-session-id" } },
+            }),
+        );
 
         const mockEvent = {
             headers: { "session-id": "test-session-id" },
@@ -124,8 +127,11 @@ describe("CreateAuthCodeLambda", () => {
     });
 
     it("should reject creating an auth code for a non-existent session ID", async () => {
-        vi.spyOn(mockSessionService.prototype, "getSession").mockRejectedValue(
-            new SessionNotFoundError("test-session-id", 404),
+        mockDynamoDbClient.prototype.send = vi.fn().mockRejectedValue(
+            new ConditionalCheckFailedException({
+                $metadata: {},
+                message: "Condition not met",
+            }),
         );
 
         const mockEvent = {
@@ -135,6 +141,15 @@ describe("CreateAuthCodeLambda", () => {
         const result = await lambdaHandler(mockEvent, {} as Context);
 
         expect(result.statusCode).toBe(404);
-        expect(mockDynamoDbClient.prototype.send).not.toHaveBeenCalled();
+    });
+
+    it("requests the old item on condition failure to enable checking if a session already exists", async () => {
+        const mockEvent = { headers: { "session-id": "test-session-id" } } as unknown as APIGatewayProxyEvent;
+
+        await lambdaHandler(mockEvent, {} as Context);
+
+        expect(UpdateCommand).toHaveBeenCalledWith(
+            expect.objectContaining({ ReturnValuesOnConditionCheckFailure: "ALL_OLD" }),
+        );
     });
 });
