@@ -161,14 +161,14 @@ Parameters:
     Type: String
     Description: Specifies the configuration to enable gradual Lambda deployments. This value is picked up from the LambdaCanaryDeployment on the pipeline.
     Default: "AllAtOnce"
-  LambdaVersionHash:
-    Type: String
-    Description: Commit SHA used to force Lambda version publication
-    Default: "initial"
   LambdaProvisionedConcurrentExecutions:
     Type: Number
     Description: Provisioned concurrency for the Lambdas (0 = disabled)
     Default: 0
+  LambdaVersionHash:
+    Type: String
+    Description: Commit SHA used to force Lambda version publication
+    Default: ""
   LambdaVpcConfiguration:
     Type: String
     Description: >
