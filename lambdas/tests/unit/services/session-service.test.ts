@@ -2,10 +2,10 @@ import { SessionService } from "../../../src/services/session-service";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
 import {
-    InvalidAccessTokenError,
-    SessionNotFoundError,
     AuthorizationCodeExpiredError,
+    InvalidAccessTokenError,
     SessionExpiredError,
+    SessionNotFoundError,
 } from "../../../src/common/utils/errors";
 import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { Vtr } from "../../../src/schemas/ipv-request.schema";
@@ -20,11 +20,8 @@ describe("session-service", () => {
     let sessionService: SessionService;
 
     const configService = new ConfigService(vi.fn() as unknown as SSMProvider);
-    // let mockDynamoDbClient: MockedObject<typeof DynamoDBDocument>;
     const mockDynamoDbClient = vi.mocked(DynamoDBDocument);
     const mockConfigService = vi.mocked(ConfigService);
-    // const mockGetCommand = vi.mocked(GetCommand);
-    // const mockUpdateCommand = vi.mocked(UpdateCommand);
 
     beforeEach(() => {
         vi.resetAllMocks();
@@ -408,10 +405,16 @@ describe("session-service", () => {
     });
 
     describe("deleteSession", () => {
+        const sessionTableName = "session-table-name";
+        const personTableName = "person-table-name";
+        const sessionId = "test-session-id";
+
         it("should delete the session if the session exists", async () => {
-            const tableName = "session-table-name";
-            const sessionId = "test-session-id";
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry")
+                .mockReturnValueOnce(sessionTableName)
+                .mockReturnValueOnce(sessionTableName)
+                .mockReturnValueOnce(personTableName);
+
             vi.spyOn(mockDynamoDbClient.prototype, "send")
                 .mockResolvedValueOnce({ Item: { sessionId } } as never)
                 .mockResolvedValueOnce({} as never);
@@ -421,21 +424,25 @@ describe("session-service", () => {
             expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
                 1,
                 expect.objectContaining({
-                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                    input: expect.objectContaining({ TableName: sessionTableName, Key: { sessionId } }),
                 }),
             );
             expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
                 2,
                 expect.objectContaining({
-                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                    input: expect.objectContaining({
+                        TransactItems: [
+                            { Delete: { TableName: sessionTableName, Key: { sessionId } } },
+                            { Delete: { TableName: personTableName, Key: { sessionId } } },
+                        ],
+                    }),
                 }),
             );
         });
 
         it("should throw a 404 SessionNotFoundError and not delete the session if the session does not exist", async () => {
-            const tableName = "session-table-name";
             const sessionId = "does-not-exist";
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(sessionTableName);
             vi.spyOn(mockDynamoDbClient.prototype, "send").mockResolvedValueOnce({} as never);
 
             expect.assertions(4);
@@ -450,9 +457,7 @@ describe("session-service", () => {
         });
 
         it("should propagate a session lookup error without deleting the session", async () => {
-            const tableName = "session-table-name";
-            const sessionId = "test-session-id";
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(sessionTableName);
             vi.spyOn(mockDynamoDbClient.prototype, "send").mockRejectedValueOnce(
                 new Error("DynamoDB unavailable") as never,
             );
@@ -467,19 +472,26 @@ describe("session-service", () => {
             }
         });
 
-        it("should propagate an error thrown by the delete command", async () => {
-            const tableName = "session-table-name";
-            const sessionId = "test-session-id";
-            vi.spyOn(mockConfigService.prototype, "getConfigEntry").mockReturnValue(tableName);
+        it("should propagate an error thrown by the delete transaction", async () => {
+            vi.spyOn(mockConfigService.prototype, "getConfigEntry")
+                .mockReturnValueOnce(sessionTableName)
+                .mockReturnValueOnce(sessionTableName)
+                .mockReturnValueOnce(personTableName);
+
             vi.spyOn(mockDynamoDbClient.prototype, "send")
                 .mockResolvedValueOnce({ Item: { sessionId } } as never)
-                .mockRejectedValueOnce(new Error("DynamoDB unavailable") as never);
+                .mockRejectedValueOnce(new Error("TransactionCanceledException") as never);
 
-            await expect(sessionService.deleteSession(sessionId)).rejects.toThrow("DynamoDB unavailable");
+            await expect(sessionService.deleteSession(sessionId)).rejects.toThrow("TransactionCanceledException");
             expect(mockDynamoDbClient.prototype.send).toHaveBeenNthCalledWith(
                 2,
                 expect.objectContaining({
-                    input: expect.objectContaining({ TableName: tableName, Key: { sessionId } }),
+                    input: expect.objectContaining({
+                        TransactItems: [
+                            { Delete: { TableName: sessionTableName, Key: { sessionId } } },
+                            { Delete: { TableName: personTableName, Key: { sessionId } } },
+                        ],
+                    }),
                 }),
             );
         });

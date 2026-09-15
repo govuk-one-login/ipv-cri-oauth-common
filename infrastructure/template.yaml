@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.2.11
+    SemanticVersion: 1.2.12
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -1401,8 +1401,13 @@ Resources:
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
+          PERSON_IDENTITY_TABLE: !If
+            - IsUsingCommonLambdasTables
+            - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/PersonIdentityTableName}}"
+            - !Ref PersonIdentityTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      AutoPublishCodeSha256: !Ref LambdaVersionHash
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -1413,6 +1418,11 @@ Resources:
                 - dynamodb:GetItem
               Resource:
                 - !GetAtt SessionTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:DeleteItem
+              Resource:
+                - !GetAtt PersonIdentityTable.Arn
         - KMSDecryptPolicy:
             KeyId: !Ref DynamoTablesEncryptionKey
         - !If
@@ -1429,6 +1439,11 @@ Resources:
                   - dynamodb:GetItem
                 Resource:
                   - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
+              - Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/{{resolve:ssm:/${CommonLambdasStackName}/PersonIdentityTableName}}"
           - !Ref AWS::NoValue
         - Statement:
             - Effect: Allow

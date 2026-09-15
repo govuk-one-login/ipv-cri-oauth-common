@@ -277,6 +277,10 @@ public class APISteps {
         return OAUTH_TABLES ? SESSION_TABLE_NAME : "session-common-cri-api";
     }
 
+    private static String personIdentityTableName() {
+        return OAUTH_TABLES ? PERSON_IDENTITY_TABLE_NAME : "person-identity-common-cri-api";
+    }
+
     private static String aSignedJwt() {
         Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
@@ -389,8 +393,18 @@ public class APISteps {
         currentSessionId = "bad-session-id";
     }
 
+    @And("the session exists in the person identity table")
+    public void sessionExistsInPersonIdentityTable() {
+        assertTrue(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
+    }
+
     @And("the session no longer exists in the session table")
     public void sessionIdNoLongerExistsInSessionTable() {
         assertFalse(DynamoDBUtil.sessionExists(sessionTableName(), currentSessionId));
+    }
+
+    @And("the session no longer exists in the person identity table")
+    public void sessionNoLongerExistsInPersonIdentityTable() {
+        assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
     }
 }

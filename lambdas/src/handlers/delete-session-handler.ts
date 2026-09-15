@@ -44,7 +44,11 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     .use(
         initialiseConfigMiddleware({
             configService: configService,
-            config_keys: [CommonConfigKey.SESSION_TABLE_NAME, CommonConfigKey.SESSION_TTL],
+            config_keys: [
+                CommonConfigKey.SESSION_TABLE_NAME,
+                CommonConfigKey.SESSION_TTL,
+                CommonConfigKey.PERSON_IDENTITY_TABLE_NAME,
+            ],
         }),
     )
     .use(injectLambdaContext(logger, { resetKeys: true }));
