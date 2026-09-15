@@ -236,6 +236,10 @@ Conditions:
 
   IsCodeSigningEnabled: !Not
     - !Equals [!Ref LambdaCodeSigningConfigArn, "none"]
+
+  UseLambdaVersionHash: !Not
+    - !Equals [!Ref LambdaVersionHash, ""]
+
   IsPermissionsBoundaryEnabled: !Not
     - !Equals [!Ref PermissionsBoundaryArn, "none"]
   IsProvisionedConcurrencyEnabled: !Not
@@ -255,6 +259,7 @@ Conditions:
   IsUsingCommonLambdasTables: !Not
     - !Equals [!Ref CommonLambdasStackName, ""]
   IsCommonLambdasUsingCMK: !Equals [!Ref CommonLambdasUsesCMK, "true"]
+
 
 Globals:
   Function:
@@ -350,7 +355,10 @@ Resources:
           VC_ISSUER: !Ref CriVcIssuer
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -545,7 +553,10 @@ Resources:
           ENV_VAR_AUTHORIZATION_REQUEST_TYPE: !Ref AuthorizationRequestType
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -711,7 +722,10 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -884,7 +898,10 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -1049,7 +1066,10 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -1230,7 +1250,10 @@ Resources:
             - !Ref SessionTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
-      AutoPublishCodeSha256: !Ref LambdaVersionHash
+      AutoPublishCodeSha256: !If
+        - UseLambdaVersionHash
+        - !Ref LambdaVersionHash
+        - !Ref AWS::NoValue
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
