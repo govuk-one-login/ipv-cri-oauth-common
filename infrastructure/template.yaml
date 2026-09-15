@@ -1009,7 +1009,7 @@ Resources:
         - Name: Stage
           Value: !Ref Environment
         - Name: Resource
-          Value: /session
+          Value: /create-auth-code
       Statistic: Sum
       Unit: Count
       Period: 60
