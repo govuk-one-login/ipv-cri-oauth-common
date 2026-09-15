@@ -5,18 +5,22 @@ Feature: Delete Session API
     And the Session lambda is called
     When user sends a request to session API
     Then user gets a session id
+    And the session exists in the person identity table
     When the delete session endpoint is called
     Then expect a status code of 200 in the response
     And the session no longer exists in the session table
+    And the session no longer exists in the person identity table
 
   Scenario: A deleted session cannot be updated, used to create an auth code, or authorized
     Given authorization JAR for test user 681
     And the Session lambda is called
     When user sends a request to session API
     Then user gets a session id
+    And the session exists in the person identity table
     When the delete session endpoint is called
     Then expect a status code of 200 in the response
     And the session no longer exists in the session table
+    And the session no longer exists in the person identity table
 
     When I create a new session update request
     And The session update request contains the field "field1" set to "test field 1"

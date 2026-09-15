@@ -1,5 +1,5 @@
 import {
-    DeleteCommand,
+    TransactWriteCommand,
     DynamoDBDocument,
     GetCommand,
     PutCommand,
@@ -137,6 +137,10 @@ export class SessionService {
         return this.configService.getConfigEntry(CommonConfigKey.SESSION_TABLE_NAME);
     }
 
+    private getPersonIdentityTableName(): string {
+        return this.configService.getConfigEntry(CommonConfigKey.PERSON_IDENTITY_TABLE_NAME);
+    }
+
     public async deleteSession(sessionId: string) {
         try {
             await this.getSession(sessionId);
@@ -148,10 +152,13 @@ export class SessionService {
             throw error;
         }
 
-        const deleteCommand = new DeleteCommand({
-            TableName: this.getSessionTableName(),
-            Key: { sessionId: sessionId },
-        });
-        await this.dynamoDbClient.send(deleteCommand);
+        await this.dynamoDbClient.send(
+            new TransactWriteCommand({
+                TransactItems: [
+                    { Delete: { TableName: this.getSessionTableName(), Key: { sessionId } } },
+                    { Delete: { TableName: this.getPersonIdentityTableName(), Key: { sessionId } } },
+                ],
+            }),
+        );
     }
 }
