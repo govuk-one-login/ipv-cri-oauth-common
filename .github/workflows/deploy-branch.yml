@@ -115,6 +115,7 @@ jobs:
             IPVCoreRedirectURI=https://identity.staging.account.gov.uk/credential-issuer/callback?id=nino
             IPVCoreStubJwksEndpoint=https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json
             KeyRotationFallback=true
+            LambdaVersionHash=${{ github.sha }}
             LambdaVpcConfiguration=di-devplatform-deploy
 
   deploy-ipv:
@@ -162,6 +163,7 @@ jobs:
             IPVCoreRedirectURI=https://identity.staging.account.gov.uk/credential-issuer/callback?id=nino
             IPVCoreStubJwksEndpoint=https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json
             KeyRotationFallback=true
+            LambdaVersionHash=${{ github.sha }}
             LambdaVpcConfiguration=di-devplatform-deploy
 
   deploy-migrating:
@@ -210,4 +212,5 @@ jobs:
             IPVCoreRedirectURI=https://identity.staging.account.gov.uk/credential-issuer/callback?id=nino
             IPVCoreStubJwksEndpoint=https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json
             KeyRotationFallback=true
+            LambdaVersionHash=${{ github.sha }}
             LambdaVpcConfiguration=di-devplatform-deploy
