@@ -15,6 +15,7 @@ import { msToSeconds } from "../common/utils/time-utils";
 import initialiseConfigMiddleware from "../middlewares/config/initialise-config-middleware";
 import errorMiddleware from "../middlewares/error/error-middleware";
 import { CommonConfigKey } from "../types/config-keys";
+import { SessionService } from "../services/session-service";
 
 const dynamoDbClient = createClient(AwsClientType.DYNAMO);
 const ssmClient = createClient(AwsClientType.SSM);
@@ -24,6 +25,7 @@ export class CreateAuthCodeLambda implements LambdaInterface {
     constructor(
         private readonly configService: ConfigService,
         private readonly dynamoDbClient: DynamoDBDocument,
+        private readonly sessionService: SessionService,
     ) {}
 
     @metrics.logMetrics({ throwOnEmptyMetrics: false, captureColdStartMetric: true })
@@ -44,12 +46,13 @@ export class CreateAuthCodeLambda implements LambdaInterface {
                     Key: { sessionId: sessionId },
                     UpdateExpression: "SET authorizationCode=:authCode, authorizationCodeExpiryDate=:authCodeExpiry",
                     ConditionExpression:
-                        "attribute_not_exists(authorizationCode) OR authorizationCodeExpiryDate < :now",
+                        "attribute_exists(sessionId) AND attribute_not_exists(authorizationCode) OR authorizationCodeExpiryDate < :now",
                     ExpressionAttributeValues: {
                         ":authCode": authorizationCode,
                         ":authCodeExpiry": this.configService.getAuthorizationCodeExpirationEpoch(),
                         ":now": msToSeconds(Date.now()),
                     },
+                    ReturnValuesOnConditionCheckFailure: "ALL_OLD",
                 }),
             );
 
@@ -60,6 +63,10 @@ export class CreateAuthCodeLambda implements LambdaInterface {
             return { statusCode: 201 };
         } catch (err: unknown) {
             if (err instanceof ConditionalCheckFailedException) {
+                if (!err.Item) {
+                    logger.info(`Session doesn't exist`, { sessionId });
+                    return { statusCode: 404 };
+                }
                 logger.info(`AuthCode already exists for session`, { sessionId });
                 metrics.addDimension("state", "UNCHANGED");
                 captureMetric(AUTH_CODE_CREATED_METRIC);
@@ -71,8 +78,9 @@ export class CreateAuthCodeLambda implements LambdaInterface {
 }
 
 const configService = new ConfigService(new SSMProvider({ awsSdkV3Client: ssmClient }));
+const sessionService = new SessionService(dynamoDbClient, configService);
 
-const handlerClass = new CreateAuthCodeLambda(configService, dynamoDbClient);
+const handlerClass = new CreateAuthCodeLambda(configService, dynamoDbClient, sessionService);
 export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     .use(
         errorMiddleware(logger, {

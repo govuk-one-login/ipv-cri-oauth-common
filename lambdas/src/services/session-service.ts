@@ -1,4 +1,11 @@
-import { DynamoDBDocument, GetCommand, PutCommand, QueryCommandInput, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+    TransactWriteCommand,
+    DynamoDBDocument,
+    GetCommand,
+    PutCommand,
+    QueryCommandInput,
+    UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { BearerAccessToken } from "../types/bearer-access-token";
 import { ConfigService } from "../common/config/config-service";
 import { randomUUID } from "node:crypto";
@@ -13,6 +20,7 @@ import { CommonConfigKey } from "../types/config-keys";
 import { SessionItem, UnixMillisecondsTimestamp, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
 import { msToSeconds } from "../common/utils/time-utils";
 import { OAuthSessionItem } from "../types/oauth-session-item";
+import { logger } from "@govuk-one-login/cri-logger";
 
 export class SessionService {
     constructor(
@@ -127,5 +135,30 @@ export class SessionService {
 
     private getSessionTableName(): string {
         return this.configService.getConfigEntry(CommonConfigKey.SESSION_TABLE_NAME);
+    }
+
+    private getPersonIdentityTableName(): string {
+        return this.configService.getConfigEntry(CommonConfigKey.PERSON_IDENTITY_TABLE_NAME);
+    }
+
+    public async deleteSession(sessionId: string) {
+        try {
+            await this.getSession(sessionId);
+        } catch (error) {
+            if (error instanceof SessionNotFoundError) {
+                logger.info(`Session not found`, { sessionId });
+                throw new SessionNotFoundError(sessionId, 404);
+            }
+            throw error;
+        }
+
+        await this.dynamoDbClient.send(
+            new TransactWriteCommand({
+                TransactItems: [
+                    { Delete: { TableName: this.getSessionTableName(), Key: { sessionId } } },
+                    { Delete: { TableName: this.getPersonIdentityTableName(), Key: { sessionId } } },
+                ],
+            }),
+        );
     }
 }

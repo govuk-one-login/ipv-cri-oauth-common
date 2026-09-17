@@ -36,6 +36,7 @@ public class APISteps {
     private static String devSessionUri;
     private static String devAuthorizationUri;
     public static String devAccessTokenUri;
+    private static String devDeleteSessionUri;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String REDIRECT_URI = System.getenv("IPV_CORE_STUB_URL");
     private static final String DEFAULT_REDIRECT_URI =
@@ -276,6 +277,10 @@ public class APISteps {
         return OAUTH_TABLES ? SESSION_TABLE_NAME : "session-common-cri-api";
     }
 
+    private static String personIdentityTableName() {
+        return OAUTH_TABLES ? PERSON_IDENTITY_TABLE_NAME : "person-identity-common-cri-api";
+    }
+
     private static String aSignedJwt() {
         Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
@@ -375,5 +380,31 @@ public class APISteps {
         DynamoDBUtil.expireAuthorizationCode(
                 sessionTableName(),
                 currentSessionId);
+    }
+
+    @When("the delete session endpoint is called")
+    public void userSendsRequestToDeleteSession() throws IOException, URISyntaxException, InterruptedException {
+        devDeleteSessionUri = ENVIRONMENT + "/session";
+        response = IpvCoreStubUtil.sendDeleteSessionRequest(devDeleteSessionUri, currentSessionId);
+    }
+
+    @Given("a session that does not exist")
+    public void aSessionDoesNotExist() {
+        currentSessionId = "bad-session-id";
+    }
+
+    @And("the session exists in the person identity table")
+    public void sessionExistsInPersonIdentityTable() {
+        assertTrue(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
+    }
+
+    @And("the session no longer exists in the session table")
+    public void sessionIdNoLongerExistsInSessionTable() {
+        assertFalse(DynamoDBUtil.sessionExists(sessionTableName(), currentSessionId));
+    }
+
+    @And("the session no longer exists in the person identity table")
+    public void sessionNoLongerExistsInPersonIdentityTable() {
+        assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
     }
 }

@@ -226,4 +226,15 @@ public class IpvCoreStubUtil {
 
         return sendHttpRequest(request);
     }
+
+    public static HttpResponse<String> sendDeleteSessionRequest(String apiPath, String sessionId) throws URISyntaxException, IOException, InterruptedException {
+        var request = HttpRequest.newBuilder()
+                .uri(new URIBuilder(getPrivateApiEndpoint()).setPath(apiPath).build())
+                .setHeader("Accept", "application/json")
+                .setHeader("Content-Type", "application/json")
+                .setHeader("session-id", sessionId)
+                .method("DELETE", HttpRequest.BodyPublishers.noBody())
+                .build();
+        return sendHttpRequest(request);
+    }
 }
