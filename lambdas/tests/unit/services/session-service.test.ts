@@ -177,24 +177,32 @@ describe("session-service", () => {
             expect(() => sessionService.validateSessionAndAuthorizationCodeExpiry(sessionItem)).not.toThrow();
         });
     });
+
     describe("createAccessTokenCode", () => {
-        it("should update dynamo db with the access token", async () => {
+        it("should atomically create the access token and consume the authorisation code", async () => {
             const sessionItem = {
                 sessionId: "session-id",
                 clientId: "client-id",
                 clientSessionId: "client-session-id",
-                authorizationCodeExpiryDate: 0,
+                authorizationCode: "authorization-code",
+                authorizationCodeExpiryDate: 1675382500 as UnixSecondsTimestamp,
                 redirectUri: "redirect-uri",
                 accessToken: "access-token",
-                accessTokenExpiryDate: 0,
+                accessTokenExpiryDate: 0 as UnixSecondsTimestamp,
             };
+
             const accessToken = {
                 access_token: "access-token",
                 token_type: "token-type",
                 expires_in: 0,
             };
+
+            vi.spyOn(Date, "now").mockReturnValue(1675382400000);
             vi.spyOn(configService, "getConfigEntry").mockReturnValue("session-table-name");
-            vi.spyOn(configService, "getBearerAccessTokenExpirationEpoch").mockReturnValueOnce(1675382400000);
+            vi.spyOn(configService, "getBearerAccessTokenExpirationEpoch").mockReturnValueOnce(
+                1675382600 as UnixSecondsTimestamp,
+            );
+
             await sessionService.createAccessTokenCodeAndRemoveAuthCode(sessionItem as SessionItem, accessToken);
 
             expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledWith(
@@ -203,14 +211,57 @@ describe("session-service", () => {
                         TableName: "session-table-name",
                         Key: { sessionId: "session-id" },
                         UpdateExpression:
-                            "SET accessToken=:accessTokenCode, accessTokenExpiryDate=:accessTokenExpiry REMOVE authorizationCode",
+                            "SET accessToken=:accessTokenCode, accessTokenExpiryDate=:accessTokenExpiry " +
+                            "REMOVE authorizationCode",
+                        ConditionExpression:
+                            "attribute_exists(authorizationCode) " +
+                            "AND authorizationCode=:expectedAuthorizationCode " +
+                            "AND authorizationCodeExpiryDate>:currentTime",
                         ExpressionAttributeValues: {
                             ":accessTokenCode": "token-type access-token",
-                            ":accessTokenExpiry": 1675382400000,
+                            ":accessTokenExpiry": 1675382600,
+                            ":expectedAuthorizationCode": "authorization-code",
+                            ":currentTime": 1675382400,
                         },
                     }),
                 }),
             );
+        });
+        it("should reject the update when the authorisation code has already been consumed", async () => {
+            const sessionItem = {
+                sessionId: "session-id",
+                clientId: "client-id",
+                clientSessionId: "client-session-id",
+                authorizationCode: "authorization-code",
+                authorizationCodeExpiryDate: 1675382500 as UnixSecondsTimestamp,
+                redirectUri: "redirect-uri",
+                accessToken: "",
+                accessTokenExpiryDate: 0 as UnixSecondsTimestamp,
+            };
+
+            const accessToken = {
+                access_token: "access-token",
+                token_type: "token-type",
+                expires_in: 0,
+            };
+
+            const conditionalCheckFailedError = new Error("The conditional request failed");
+            conditionalCheckFailedError.name = "ConditionalCheckFailedException";
+
+            vi.spyOn(Date, "now").mockReturnValue(1675382400000);
+            vi.spyOn(configService, "getConfigEntry").mockReturnValue("session-table-name");
+            vi.spyOn(configService, "getBearerAccessTokenExpirationEpoch").mockReturnValueOnce(
+                1675382600 as UnixSecondsTimestamp,
+            );
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockRejectedValueOnce(conditionalCheckFailedError as never);
+
+            await expect(
+                sessionService.createAccessTokenCodeAndRemoveAuthCode(sessionItem as SessionItem, accessToken),
+            ).rejects.toMatchObject({
+                name: "ConditionalCheckFailedException",
+            });
+
+            expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(1);
         });
     });
 

@@ -91,18 +91,28 @@ export class SessionService {
         return dateToCheck < msToSeconds(Date.now());
     }
 
-    public async createAccessTokenCodeAndRemoveAuthCode(sessionItem: SessionItem, accessToken: BearerAccessToken) {
+    public async createAccessTokenCodeAndRemoveAuthCode(
+        sessionItem: SessionItem,
+        accessToken: BearerAccessToken,
+    ): Promise<void> {
         const updateSessionCommand = new UpdateCommand({
             TableName: this.getSessionTableName(),
             Key: { sessionId: sessionItem.sessionId },
             UpdateExpression:
                 "SET accessToken=:accessTokenCode, accessTokenExpiryDate=:accessTokenExpiry " +
                 "REMOVE authorizationCode",
+            ConditionExpression:
+                "attribute_exists(authorizationCode) " +
+                "AND authorizationCode=:expectedAuthorizationCode " +
+                "AND authorizationCodeExpiryDate>:currentTime",
             ExpressionAttributeValues: {
                 ":accessTokenCode": `${accessToken.token_type} ${accessToken.access_token}`,
                 ":accessTokenExpiry": this.configService.getBearerAccessTokenExpirationEpoch(),
+                ":expectedAuthorizationCode": sessionItem.authorizationCode,
+                ":currentTime": msToSeconds(Date.now()),
             },
         });
+
         await this.dynamoDbClient.send(updateSessionCommand);
     }
 
