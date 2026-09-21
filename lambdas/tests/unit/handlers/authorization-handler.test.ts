@@ -189,12 +189,12 @@ describe("authorization-handler.ts", () => {
             let loggerSpyError: MockInstance;
             beforeEach(() => {
                 loggerSpyError = vi.spyOn(logger, "error");
+            });
+            it("should return 403 status code and return body with access_denied", async () => {
                 vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
                     ...sessionItem,
                     authorizationCode: undefined,
                 } as SessionItem);
-            });
-            it("should return 403 status code and return body with access_denied", async () => {
                 const result = await lambdaHandler(
                     {
                         body: body,
@@ -214,6 +214,122 @@ describe("authorization-handler.ts", () => {
                         message: "Authorization permission denied",
                         code: "access_denied",
                         errorSummary: "access_denied: Authorization permission denied",
+                        redirect_uri: "http://123.com",
+                        state: "session-state-value",
+                    }),
+                });
+                expect(loggerSpyError).toHaveBeenCalledWith(
+                    "Authorization Lambda error occurred: access_denied: Authorization permission denied",
+                    expect.any(AccessDeniedError),
+                );
+                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+            });
+
+            it("should return 403 status, access_denied and use record_unavailable errorDescription for error message", async () => {
+                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                    ...sessionItem,
+                    authorizationCode: undefined,
+                    sessionData: { errorDescription: "record_unavailable" },
+                } as SessionItem);
+
+                const result = await lambdaHandler(
+                    {
+                        body: body,
+                        headers: headers,
+                        queryStringParameters: {
+                            client_id: "1",
+                            redirect_uri: "http://123.com",
+                            response_type: "a_response_type",
+                        },
+                    } as unknown as APIGatewayProxyEvent,
+                    {} as Context,
+                );
+
+                expect(result).toEqual({
+                    statusCode: 403,
+                    body: JSON.stringify({
+                        message: "record_unavailable",
+                        code: "access_denied",
+                        errorSummary: "access_denied: record_unavailable",
+                        redirect_uri: "http://123.com",
+                        state: "session-state-value",
+                    }),
+                });
+                expect(loggerSpyError).toHaveBeenCalledWith(
+                    "Authorization Lambda error occurred: access_denied: record_unavailable",
+                    expect.any(AccessDeniedError),
+                );
+                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+            });
+
+            it("should return 403 status, access_denied and use record_update_requested errorDescription for error message", async () => {
+                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                    ...sessionItem,
+                    authorizationCode: undefined,
+                    sessionData: { errorDescription: "record_update_requested" },
+                } as SessionItem);
+
+                const result = await lambdaHandler(
+                    {
+                        body: body,
+                        headers: headers,
+                        queryStringParameters: {
+                            client_id: "1",
+                            redirect_uri: "http://123.com",
+                            response_type: "a_response_type",
+                        },
+                    } as unknown as APIGatewayProxyEvent,
+                    {} as Context,
+                );
+
+                expect(result).toEqual({
+                    statusCode: 403,
+                    body: JSON.stringify({
+                        message: "record_update_requested",
+                        code: "access_denied",
+                        errorSummary: "access_denied: record_update_requested",
+                        redirect_uri: "http://123.com",
+                        state: "session-state-value",
+                    }),
+                });
+                expect(loggerSpyError).toHaveBeenCalledWith(
+                    "Authorization Lambda error occurred: access_denied: record_update_requested",
+                    expect.any(AccessDeniedError),
+                );
+                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+            });
+
+            it("should return 403 status, access_denied and use default message when errorDescription is empty", async () => {
+                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                    ...sessionItem,
+                    authorizationCode: undefined,
+                    sessionData: { errorDescription: "" },
+                } as SessionItem);
+
+                const result = await lambdaHandler(
+                    {
+                        body: body,
+                        headers: headers,
+                        queryStringParameters: {
+                            client_id: "1",
+                            redirect_uri: "http://123.com",
+                            response_type: "a_response_type",
+                        },
+                    } as unknown as APIGatewayProxyEvent,
+                    {} as Context,
+                );
+
+                expect(result).toEqual({
+                    statusCode: 403,
+                    body: JSON.stringify({
+                        message: "Authorization permission denied",
+                        code: "access_denied",
+                        errorSummary: "access_denied: Authorization permission denied",
+                        redirect_uri: "http://123.com",
+                        state: "session-state-value",
                     }),
                 });
                 expect(loggerSpyError).toHaveBeenCalledWith(

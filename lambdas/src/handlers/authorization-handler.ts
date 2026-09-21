@@ -50,7 +50,11 @@ export class AuthorizationLambda implements LambdaInterface {
             if (!sessionItem.authorizationCode) {
                 logger.info("No Auth Code retrieved returning Oauth access_denied");
                 captureMetric(NO_AUTHORIZATION_CODE);
-                throw new AccessDeniedError();
+                throw new AccessDeniedError(
+                    sessionItem.redirectUri,
+                    sessionItem.state,
+                    sessionItem.sessionData?.errorDescription,
+                );
             }
 
             const authorizationResponse = {
