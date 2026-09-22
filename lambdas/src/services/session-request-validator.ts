@@ -71,6 +71,11 @@ export class SessionRequestValidator {
             );
         } else if (!state) {
             throw new SessionValidationError("Session Validation Exception", "Invalid state parameter");
+        } else if (!payload.shared_claims) {
+            throw new SessionValidationError(
+                "Session Validation Exception",
+                "Invalid request: JWT validation/verification failed: JWT payload missing shared claims",
+            );
         }
 
         return payload;
