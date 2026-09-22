@@ -265,6 +265,36 @@ describe("session-service", () => {
 
             expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(1);
         });
+
+        it("should rethrow unexpected errors from DynamoDB", async () => {
+            const sessionItem = {
+                sessionId: "session-id",
+                authorizationCode: "authorization-code",
+                authorizationCodeExpiryDate: 1675382500 as UnixSecondsTimestamp,
+            } as SessionItem;
+
+            const accessToken = {
+                access_token: "access-token",
+                token_type: "token-type",
+                expires_in: 0,
+            };
+
+            const dynamoError = new Error("DynamoDB unavailable");
+
+            vi.spyOn(Date, "now").mockReturnValue(1675382400000);
+
+            vi.spyOn(configService, "getConfigEntry").mockReturnValue("session-table-name");
+
+            vi.spyOn(configService, "getBearerAccessTokenExpirationEpoch").mockReturnValueOnce(
+                1675382600 as UnixSecondsTimestamp,
+            );
+
+            vi.spyOn(mockDynamoDbClient.prototype, "send").mockRejectedValueOnce(dynamoError as never);
+
+            await expect(
+                sessionService.createAccessTokenCodeAndRemoveAuthCode(sessionItem, accessToken),
+            ).rejects.toThrow("DynamoDB unavailable");
+        });
     });
 
     describe("saveSession", () => {
