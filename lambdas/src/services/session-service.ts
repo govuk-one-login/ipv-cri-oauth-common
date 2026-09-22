@@ -112,8 +112,14 @@ export class SessionService {
                 ":currentTime": msToSeconds(Date.now()),
             },
         });
-
-        await this.dynamoDbClient.send(updateSessionCommand);
+        try {
+            await this.dynamoDbClient.send(updateSessionCommand);
+        } catch (error) {
+            if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
+                throw new InvalidAccessTokenError();
+            }
+            throw error;
+        }
     }
 
     public async saveSession(sessionRequest: SessionRequestSummary): Promise<OAuthSessionItem> {

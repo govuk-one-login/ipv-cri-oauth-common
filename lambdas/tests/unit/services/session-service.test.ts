@@ -227,7 +227,7 @@ describe("session-service", () => {
                 }),
             );
         });
-        it("should reject the update when the authorisation code has already been consumed", async () => {
+        it("should throw InvalidAccessTokenError when the authorisation code has already been consumed", async () => {
             const sessionItem = {
                 sessionId: "session-id",
                 clientId: "client-id",
@@ -246,20 +246,22 @@ describe("session-service", () => {
             };
 
             const conditionalCheckFailedError = new Error("The conditional request failed");
+
             conditionalCheckFailedError.name = "ConditionalCheckFailedException";
 
             vi.spyOn(Date, "now").mockReturnValue(1675382400000);
+
             vi.spyOn(configService, "getConfigEntry").mockReturnValue("session-table-name");
+
             vi.spyOn(configService, "getBearerAccessTokenExpirationEpoch").mockReturnValueOnce(
                 1675382600 as UnixSecondsTimestamp,
             );
+
             vi.spyOn(mockDynamoDbClient.prototype, "send").mockRejectedValueOnce(conditionalCheckFailedError as never);
 
             await expect(
                 sessionService.createAccessTokenCodeAndRemoveAuthCode(sessionItem as SessionItem, accessToken),
-            ).rejects.toMatchObject({
-                name: "ConditionalCheckFailedException",
-            });
+            ).rejects.toBeInstanceOf(InvalidAccessTokenError);
 
             expect(mockDynamoDbClient.prototype.send).toHaveBeenCalledTimes(1);
         });
