@@ -341,6 +341,7 @@ describe("session-request-validator.ts", () => {
                 redirect_uri: "redirect-uri",
                 state: "state",
                 vtr: ["P2"],
+                shared_claims: personIdentity,
                 claims: {
                     userinfo: {
                         "https://vocab.account.gov.uk/v1/coreIdentityJWT": { essential: true },
@@ -383,6 +384,7 @@ describe("session-request-validator.ts", () => {
                     email_address: "test@example.com",
                     vtr: ["P2"],
                     scope: "some scope",
+                    shared_claims: personIdentity,
                     claims: {
                         userinfo: {
                             "https://vocab.account.gov.uk/v1/coreIdentityJWT": { essential: true },
@@ -451,7 +453,11 @@ describe("session-request-validator.ts", () => {
                 const payload = { client_id, redirect_uri: "redirect-uri", state: "state" } as JWTPayload;
                 vi.spyOn(jwtVerifier.prototype, "verify").mockResolvedValue(payload);
 
-                await expect(validateJwt(validatorRequiring(false))).resolves.toEqual(payload);
+                await expect(validateJwt(validatorRequiring(false))).rejects.toThrow(expect.objectContaining({
+                    message: "Session Validation Exception",
+                    details: "Invalid request: JWT validation/verification failed: JWT payload missing shared claims",
+                }),
+                );
             });
 
             it("accepts a request whose claims does not ask for a storage access token", async () => {
