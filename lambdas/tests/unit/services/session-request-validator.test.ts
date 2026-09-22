@@ -453,10 +453,12 @@ describe("session-request-validator.ts", () => {
                 const payload = { client_id, redirect_uri: "redirect-uri", state: "state" } as JWTPayload;
                 vi.spyOn(jwtVerifier.prototype, "verify").mockResolvedValue(payload);
 
-                await expect(validateJwt(validatorRequiring(false))).rejects.toThrow(expect.objectContaining({
-                    message: "Session Validation Exception",
-                    details: "Invalid request: JWT validation/verification failed: JWT payload missing shared claims",
-                }),
+                await expect(validateJwt(validatorRequiring(false))).rejects.toThrow(
+                    expect.objectContaining({
+                        message: "Session Validation Exception",
+                        details:
+                            "Invalid request: JWT validation/verification failed: JWT payload missing shared claims",
+                    }),
                 );
             });
 
