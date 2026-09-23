@@ -214,7 +214,7 @@ describe("authorization-handler.ts", () => {
                         message: "Authorization permission denied",
                         code: "access_denied",
                         errorSummary: "access_denied: Authorization permission denied",
-                        redirect_uri: "http://123.com",
+                        redirectionUri: "http://123.com",
                         state: "session-state-value",
                     }),
                 });
@@ -252,7 +252,7 @@ describe("authorization-handler.ts", () => {
                         message: "record_unavailable",
                         code: "access_denied",
                         errorSummary: "access_denied: record_unavailable",
-                        redirect_uri: "http://123.com",
+                        redirectionUri: "http://123.com",
                         state: "session-state-value",
                     }),
                 });
@@ -290,7 +290,7 @@ describe("authorization-handler.ts", () => {
                         message: "record_update_requested",
                         code: "access_denied",
                         errorSummary: "access_denied: record_update_requested",
-                        redirect_uri: "http://123.com",
+                        redirectionUri: "http://123.com",
                         state: "session-state-value",
                     }),
                 });
@@ -328,7 +328,7 @@ describe("authorization-handler.ts", () => {
                         message: "Authorization permission denied",
                         code: "access_denied",
                         errorSummary: "access_denied: Authorization permission denied",
-                        redirect_uri: "http://123.com",
+                        redirectionUri: "http://123.com",
                         state: "session-state-value",
                     }),
                 });

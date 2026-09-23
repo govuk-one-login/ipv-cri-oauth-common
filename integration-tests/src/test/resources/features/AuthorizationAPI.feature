@@ -75,4 +75,4 @@ Feature: Authorization API
     When user sends a request to authorization end point with access_denied
     Then expect a status code of 403 in the response
     And a "record_unavailable" error with code "access_denied" is sent in the response
-    And the error response should contain the "state" and "redirect_uri" fields
+    And the expected redirect_uri and state are returned in the response

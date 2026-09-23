@@ -134,7 +134,6 @@ public class APISteps {
     @And("a valid authorization code is returned in the response")
     public void aValidAuthorizationCodeIsReturnedInTheResponse() throws IOException {
         JsonNode jsonNode = objectMapper.readTree(response.body());
-
         currentAuthorizationCode = jsonNode.get("authorizationCode").get("value").textValue();
         assertNotNull(currentAuthorizationCode);
         assertFalse(currentAuthorizationCode.isEmpty());
@@ -408,14 +407,15 @@ public class APISteps {
         assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
     }
 
-    @And("the error response should contain the {string} and {string} fields")
-    public void stateAndRedirectUriArePresent(String fieldOne, String fieldTwo) throws IOException {
+    @And("the expected redirect_uri and state are returned in the response")
+    public void stateAndRedirectUriArePresent() throws IOException {
+        Map<String, AttributeValue> session = DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
+
+        String expectedRedirectUri = session.get("redirectUri").s();
+        String expectedState = session.get("state").s();
+
         JsonNode jsonNode = objectMapper.readTree(response.body());
-
-        assertTrue(jsonNode.hasNonNull(fieldOne), fieldOne + " should be present in the error");
-        assertFalse(jsonNode.get(fieldOne).asText().isEmpty(), fieldOne + " should not be empty");
-
-        assertTrue(jsonNode.hasNonNull(fieldTwo), fieldTwo + " should be present in the error");
-        assertFalse(jsonNode.get(fieldTwo).asText().isEmpty(), fieldTwo + " should not be empty");
+        assertEquals(expectedRedirectUri, jsonNode.get("redirect_uri").asText());
+        assertEquals(expectedState, jsonNode.get("state").asText());
     }
 }

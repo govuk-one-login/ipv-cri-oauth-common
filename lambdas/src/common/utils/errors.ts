@@ -150,7 +150,7 @@ export class SessionExpiredError extends BaseError {
 
 export class AccessDeniedError extends BaseError {
     constructor(
-        private readonly redirectUri?: string,
+        private readonly redirectionUri?: string,
         private readonly state?: string,
         errorDescription?: string,
     ) {
@@ -161,6 +161,6 @@ export class AccessDeniedError extends BaseError {
     }
 
     getAdditionalErrorFields(): Record<string, unknown> {
-        return { redirect_uri: this.redirectUri, state: this.state };
+        return { redirectionUri: this.redirectionUri, state: this.state };
     }
 }
