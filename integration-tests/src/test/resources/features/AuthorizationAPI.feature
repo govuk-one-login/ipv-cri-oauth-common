@@ -60,3 +60,19 @@ Feature: Authorization API
     When user sends a request to authorization end point with access_denied
     Then expect a status code of 403 in the response
     And a "Authorization permission denied" error with code "access_denied" is sent in the response
+
+  @access_denied
+  Scenario: access-denied is returned on /authorization endpoint using errorDescription as the message
+    Given authorization JAR for test user 681
+    And the Session lambda is called
+    When user sends a request to session API
+    Then user gets a session id
+    When I create a new session update request
+    And The session update request contains the field "errorDescription" set to "record_unavailable"
+    And I send the session update request
+    Then expect a status code of 200 in the response
+    And the Authorisation lambda is called
+    When user sends a request to authorization end point with access_denied
+    Then expect a status code of 403 in the response
+    And a "record_unavailable" error with code "access_denied" is sent in the response
+    And the expected redirect_uri and state are returned in the response

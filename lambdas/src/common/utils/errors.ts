@@ -12,12 +12,14 @@ export function errorPayload(err: Error, logger: Logger, loggerMessage: string):
         errorDetails,
         statusCode = 500,
         message = err.message;
+    let additionalFields = {};
 
     if (err instanceof BaseError) {
         code = err.code;
         statusCode = err?.statusCode as number;
         errorSummary = err.getErrorSummary();
         errorDetails = err.getErrorDetails();
+        additionalFields = err.getAdditionalErrorFields();
     }
 
     if (statusCode >= 500) {
@@ -25,7 +27,7 @@ export function errorPayload(err: Error, logger: Logger, loggerMessage: string):
     }
 
     logger.error(`${loggerMessage}: ${errorDetails}`, err);
-    return { statusCode, body: JSON.stringify({ message, code, errorSummary }) };
+    return { statusCode, body: JSON.stringify({ message, code, errorSummary, ...additionalFields }) };
 }
 export abstract class BaseError extends Error {
     constructor(
@@ -44,6 +46,10 @@ export abstract class BaseError extends Error {
         const error = this.getErrorSummary();
 
         return this.details ? error + " - " + this.details : error;
+    }
+
+    getAdditionalErrorFields(): Record<string, unknown> {
+        return {};
     }
 }
 
@@ -143,9 +149,18 @@ export class SessionExpiredError extends BaseError {
 }
 
 export class AccessDeniedError extends BaseError {
-    constructor() {
-        super("Authorization permission denied");
+    constructor(
+        private readonly redirectionUri?: string,
+        private readonly state?: string,
+        errorDescription?: string,
+    ) {
+        super(errorDescription || "Authorization permission denied");
         this.statusCode = 403;
         this.code = "access_denied";
+        Object.setPrototypeOf(this, AccessDeniedError.prototype);
+    }
+
+    getAdditionalErrorFields(): Record<string, unknown> {
+        return { redirectionUri: this.redirectionUri, state: this.state };
     }
 }

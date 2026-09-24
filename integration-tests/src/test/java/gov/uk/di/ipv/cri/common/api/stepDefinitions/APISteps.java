@@ -134,7 +134,6 @@ public class APISteps {
     @And("a valid authorization code is returned in the response")
     public void aValidAuthorizationCodeIsReturnedInTheResponse() throws IOException {
         JsonNode jsonNode = objectMapper.readTree(response.body());
-
         currentAuthorizationCode = jsonNode.get("authorizationCode").get("value").textValue();
         assertNotNull(currentAuthorizationCode);
         assertFalse(currentAuthorizationCode.isEmpty());
@@ -406,5 +405,17 @@ public class APISteps {
     @And("the session no longer exists in the person identity table")
     public void sessionNoLongerExistsInPersonIdentityTable() {
         assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
+    }
+
+    @And("the expected redirect_uri and state are returned in the response")
+    public void stateAndRedirectUriArePresent() throws IOException {
+        Map<String, AttributeValue> session = DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
+
+        String expectedRedirectUri = session.get("redirectUri").s();
+        String expectedState = session.get("state").s();
+
+        JsonNode jsonNode = objectMapper.readTree(response.body());
+        assertEquals(expectedRedirectUri, jsonNode.get("redirect_uri").asText());
+        assertEquals(expectedState, jsonNode.get("state").asText());
     }
 }
