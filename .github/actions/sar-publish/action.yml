@@ -104,14 +104,13 @@ runs:
         pull-repository: false
 
     - name: Package SAM application (pushing artifacts to S3)
-      shell: bash
-      env:
-        S3_BUCKET: ${{ inputs.artifactBucketName }}
-      run: sam package
-        --template .aws-sam/build/template.yaml
-        --output-template-file .aws-sam/packaged.yaml
-        --s3-bucket $S3_BUCKET
-        ${{ steps.set-signing-profiles.conclusion == 'success' && format('--signing-profiles "{0}"', steps.set-signing-profiles.outputs.result) || '' }}
+      uses: govuk-one-login/devplatform-upload-action@v3.13.0
+      with:
+        artifact-bucket-name: ${{ inputs.artifactBucketName }}
+        signing-profile-name: ${{ inputs.signingProfile }}
+        working-directory: .
+        template-file: .aws-sam/build/template.yaml
+        template-out-file: .aws-sam/packaged.yaml
 
     - name: Publish SAM application to SAR
       shell: bash
