@@ -431,7 +431,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${SessionFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   SessionFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -601,7 +601,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AuthorizationFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   AuthorizationFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -774,7 +774,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AccessTokenFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   AccessTokenFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -947,7 +947,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${CreateAuthCodeFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   CreateAuthCodeFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -1128,7 +1128,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${UpdateSessionDataFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   UpdateSessionDataFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -1293,7 +1293,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${RetrieveSessionFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   RetrieveSessionFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -1482,7 +1482,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${DeleteSessionFn}"
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
   DeleteSessionFnLogGroupSubscriptionFilterCSLS:
     Type: AWS::Logs::SubscriptionFilter
@@ -2588,7 +2588,7 @@ Resources:
     Condition: IsDev
     Properties:
       LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${PreMergeDevOnlyApi}-private-AccessLogs
-      RetentionInDays: !Equals [!Ref LogRetention, 365]
+      RetentionInDays: !Ref LogRetention
 
 Outputs:
   DbCustomerManagedKeyID:

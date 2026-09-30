@@ -42,4 +42,5 @@ sam deploy --stack-name "$stack_name" \
   IPVCoreRedirectURI=https://identity.staging.account.gov.uk/credential-issuer/callback?id=nino \
   IPVCoreStubJwksEndpoint=https://test-resources.review-hc.dev.account.gov.uk/.well-known/jwks.json \
   KeyRotationFallback=true \
-  LambdaVpcConfiguration=di-devplatform-deploy
+  LambdaVpcConfiguration=di-devplatform-deploy \
+  LogRetention=365
