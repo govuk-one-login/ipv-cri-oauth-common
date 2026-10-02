@@ -407,7 +407,7 @@ public class APISteps {
         assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
     }
 
-    @And("the expected redirectionUri and state are returned in the response")
+    @And("the expected redirect_uri and state are returned in the response")
     public void stateAndRedirectUriArePresent() throws IOException {
         Map<String, AttributeValue> session = DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
 
