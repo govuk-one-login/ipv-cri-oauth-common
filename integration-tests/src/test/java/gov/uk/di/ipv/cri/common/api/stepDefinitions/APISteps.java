@@ -407,7 +407,7 @@ public class APISteps {
         assertFalse(DynamoDBUtil.sessionExists(personIdentityTableName(), currentSessionId));
     }
 
-    @And("the expected redirect_uri and state are returned in the response")
+    @And("the expected redirectionUri and state are returned in the response")
     public void stateAndRedirectUriArePresent() throws IOException {
         Map<String, AttributeValue> session = DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
 
@@ -415,7 +415,7 @@ public class APISteps {
         String expectedState = session.get("state").s();
 
         JsonNode jsonNode = objectMapper.readTree(response.body());
-        assertEquals(expectedRedirectUri, jsonNode.get("redirect_uri").asText());
+        assertEquals(expectedRedirectUri, jsonNode.get("redirectionUri").asText());
         assertEquals(expectedState, jsonNode.get("state").asText());
     }
 }
