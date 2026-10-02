@@ -13,6 +13,12 @@ Metadata:
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
+  AccessTokenIndexWithEventDataIndexName:
+    Type: String
+    Description: >
+      The name of the access token index with event data.
+    Default: "access-token-index-with-event-data"
+
   AuditEventNamePrefix:
     Type: String
     Description: >
@@ -42,6 +48,7 @@ Parameters:
     Type: String
     Description: For migration only - Existing common-lambdas stack name, to allow the use common-lambdas tables during a migration.
     Default: ""
+
   CommonLambdasUsesCMK:
     Type: String
     Description: For migration only - The common-lambdas stack in the account uses a CMK.
@@ -1627,7 +1634,7 @@ Resources:
               - "sessionId"
               - "subject"
             ProjectionType: "INCLUDE"
-        - IndexName: "access-token-index-with-event-data"
+        - IndexName: !Ref AccessTokenIndexWithEventDataIndexName
           KeySchema:
             - AttributeName: "accessToken"
               KeyType: "HASH"
