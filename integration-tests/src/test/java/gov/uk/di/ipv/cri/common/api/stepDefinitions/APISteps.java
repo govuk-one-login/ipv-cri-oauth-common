@@ -415,7 +415,7 @@ public class APISteps {
         String expectedState = session.get("state").s();
 
         JsonNode jsonNode = objectMapper.readTree(response.body());
-        assertEquals(expectedRedirectUri, jsonNode.get("redirect_uri").asText());
+        assertEquals(expectedRedirectUri, jsonNode.get("redirectionUri").asText());
         assertEquals(expectedState, jsonNode.get("state").asText());
     }
 }

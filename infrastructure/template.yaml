@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.4.0
+    SemanticVersion: 1.4.1
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -80,16 +80,6 @@ Parameters:
     Description: >
       The public API GW name, for Canary alarms
       Example: check-hmrc-cri-api-public
-
-  CriPrivateApiGatewayID:
-    Type: String
-    Description: Private API gateway ID used to constrain Lambda permissions.
-    Default: "*"
-
-  CriPublicApiGatewayID:
-    Type: String
-    Description: Public API gateway ID used to constrain Lambda permissions.
-    Default: "*"
 
   DbSessionTTL:
     Type: Number
@@ -443,7 +433,6 @@ Resources:
       FunctionName: !GetAtt SessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -452,7 +441,6 @@ Resources:
       FunctionName: !Ref SessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   SessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -613,7 +601,6 @@ Resources:
       FunctionName: !GetAtt AuthorizationFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -622,7 +609,6 @@ Resources:
       FunctionName: !Ref AuthorizationFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   AuthorizationFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -786,7 +772,6 @@ Resources:
       FunctionName: !GetAtt AccessTokenFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenAliasPermission:
     Type: AWS::Lambda::Permission
@@ -795,7 +780,6 @@ Resources:
       FunctionName: !Ref AccessTokenFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPublicApiGatewayID}/*/*/*"
 
   AccessTokenFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -959,7 +943,6 @@ Resources:
       FunctionName: !GetAtt CreateAuthCodeFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   CreateAuthCodeFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -968,7 +951,6 @@ Resources:
       FunctionName: !Ref CreateAuthCodeFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   CreateAuthCodeFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -1140,7 +1122,6 @@ Resources:
       FunctionName: !GetAtt UpdateSessionDataFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   UpdateSessionDataFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -1149,7 +1130,6 @@ Resources:
       FunctionName: !Ref UpdateSessionDataFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   UpdateSessionDataFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -1305,7 +1285,6 @@ Resources:
       FunctionName: !GetAtt RetrieveSessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   RetrieveSessionFnAliasPermission:
     Type: AWS::Lambda::Permission
@@ -1314,7 +1293,6 @@ Resources:
       FunctionName: !Ref RetrieveSessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   RetrieveSessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
@@ -1494,7 +1472,6 @@ Resources:
       FunctionName: !GetAtt DeleteSessionFn.Arn
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   DeleteSessionFnAliasPermissions:
     Type: AWS::Lambda::Permission
@@ -1503,7 +1480,6 @@ Resources:
       FunctionName: !Ref DeleteSessionFn.Alias
       Principal: apigateway.amazonaws.com
       SourceAccount: !Sub "${AWS::AccountId}"
-      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CriPrivateApiGatewayID}/*/*/*"
 
   DeleteSessionFnLambdaErrors:
     Type: AWS::CloudWatch::Alarm
