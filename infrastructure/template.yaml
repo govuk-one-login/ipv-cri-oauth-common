@@ -9,7 +9,7 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.4.1
+    SemanticVersion: 1.4.2
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
@@ -2579,6 +2579,13 @@ Outputs:
   DbSessionTableName:
     Description: The name of the session table in DynamoDB
     Value: !Ref SessionTable
+  DbSessionTableArn:
+    Description: The name of the session table in DynamoDB
+    Value: !GetAtt SessionTable.Arn
+  DbSessionTableAccessTokenIndexWithEventDataIndexArn:
+    Value: !Sub
+      - "${SessionTableArn}/index/${AccessTokenIndexWithEventDataIndexName}"
+      - SessionTableArn: !GetAtt SessionTable.Arn
   DbPersonIdentityTableName:
     Description: The name of the person identity table in DynamoDB
     Value: !Ref PersonIdentityTable
