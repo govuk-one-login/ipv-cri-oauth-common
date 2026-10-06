@@ -4,6 +4,7 @@
 
 | Parameter | Required | Default        | Description                                                                    | Example        |
 |----------|-----|----------------|--------------------------------------------------------------------------------|----------------|
+| AccessTokenIndexWithEventDataIpvIndexName | No | access-token-index-with-event-data-ipv | Sets the name of the Access Token Index With Event Data Ipv Global Secondary Index (GSI) when the AuthorizationRequestType parameter is set to "IPV". | |
 | AuditEventNamePrefix | Yes | -              | The audit event name prefix                                                    | `IPV_HMRC_RECORD_CHECK_CRI` |
 | AuditTxmaStackName | No  | `txma-infrastructure` | The stack containing the TXMA infrastructure                                   | `txma-infrastructure` |
 | AuthorizationRequestType | No  | `CRI` | Whether the stack serves `CRI` or `IPV` authorisation requests | `IPV`          |
