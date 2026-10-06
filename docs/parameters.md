@@ -4,6 +4,7 @@
 
 | Parameter | Required | Default        | Description                                                                    | Example        |
 |----------|-----|----------------|--------------------------------------------------------------------------------|----------------|
+| AccessTokenIndexWithEventDataIpvIndexName | No | access-token-index-with-event-data-ipv | Sets the name of the Access Token Index With Event Data Ipv Global Secondary Index (GSI) when the AuthorizationRequestType parameter is set to "IPV". | |
 | AuditEventNamePrefix | Yes | -              | The audit event name prefix                                                    | `IPV_HMRC_RECORD_CHECK_CRI` |
 | AuditTxmaStackName | No  | `txma-infrastructure` | The stack containing the TXMA infrastructure                                   | `txma-infrastructure` |
 | AuthorizationRequestType | No  | `CRI` | Whether the stack serves `CRI` or `IPV` authorisation requests | `IPV`          |
@@ -32,6 +33,7 @@
 | LambdaProvisionedConcurrentExecutions | No  | 0              | Stubbed JWKS endpoint for non-prod environments                                | 1              |
 | LambdaVersionHash | No  | `""` | Commit SHA used to force Lambda version publication when deploying nested applications. Passed to AutoPublishCodeSha256 to ensure a new Lambda version is published when configuration changes occur.| `abc123def456` | 
 | LambdaVpcConfiguration | Yes | -              | Stubbed JWKS endpoint for non-prod environments                                | `di-devplatform-deploy` |
+| LogRetention | Yes | 30             | Storing of events for a defined number of days                                | 365 |
 | PermissionsBoundaryArn | No  | `none`         | The ARN of the permissions boundary to apply when creating IAM roles           | `An AWS ARN`   |
 | VpcStackNameOverride | No  | `cri-vpc`      | The name of the stack containing VPC infrastructure                            | `cri-vpc`      |
 > **Note:** The `VpcStackNameOverride` parameter will be renamed to `VpcStackName`
