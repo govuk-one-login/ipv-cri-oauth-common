@@ -9,15 +9,24 @@ Metadata:
     SpdxLicenseId: MIT
     LicenseUrl: ../LICENSE
     HomePageUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
-    SemanticVersion: 1.5.0
+    SemanticVersion: 1.5.1
     SourceCodeUrl: https://github.com/govuk-one-login/ipv-cri-oauth-common
 
 Parameters:
+  AccessTokenIndexWithEventDataIpvIndexName:
+    Type: String
+    Description: >
+      Sets the name of the Access Token Index With Event Data Ipv Global
+      Secondary Index (GSI) when the AuthorizationRequestType parameter is set
+      to "IPV".
+    Default: access-token-index-with-event-data-ipv
+
   AuditEventNamePrefix:
     Type: String
     Description: >
       The audit event name prefix
       Example: IPV_HMRC_RECORD_CHECK_CRI
+
   AuditTxmaStackName:
     Type: String
     Description: The stack containing the TXMA infrastructure
@@ -1620,11 +1629,24 @@ Resources:
               - "clientSessionId"
               - "clientIpAddress"
               - "clientId"
-              - !If
-                - IsIpvAuthorizationRequest
-                - "storageAccessToken"
-                - !Ref "AWS::NoValue"
             ProjectionType: "INCLUDE"
+        - !If
+          - IsIpvAuthorizationRequest
+          - IndexName: !Ref AccessTokenIndexWithEventDataIpvIndexName
+            KeySchema:
+              - AttributeName: "accessToken"
+                KeyType: "HASH"
+            Projection:
+              NonKeyAttributes:
+                - "sessionId"
+                - "subject"
+                - "persistentSessionId"
+                - "clientSessionId"
+                - "clientIpAddress"
+                - "clientId"
+                - "storageAccessToken"
+              ProjectionType: "INCLUDE"
+          - !Ref "AWS::NoValue"
       TimeToLiveSpecification:
         AttributeName: expiryDate
         Enabled: true
@@ -2577,6 +2599,17 @@ Outputs:
   DbSessionTableName:
     Description: The name of the session table in DynamoDB
     Value: !Ref SessionTable
+  DbSessionTableArn:
+    Description: The ARN of the session table in DynamoDB
+    Value: !GetAtt SessionTable.Arn
+  DbSessionTableAccessTokenIndexWithEventDataIpvIndexArn:
+    Condition: IsIpvAuthorizationRequest
+    Description: >
+      The ARN of the Access Token Index With Event Data Ipv Global Secondary
+      Index (GSI).
+    Value: !Sub
+      - "${SessionTableArn}/index/${AccessTokenIndexWithEventDataIpvIndexName}"
+      - SessionTableArn: !GetAtt SessionTable.Arn
   DbPersonIdentityTableName:
     Description: The name of the person identity table in DynamoDB
     Value: !Ref PersonIdentityTable

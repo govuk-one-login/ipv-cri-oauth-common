@@ -8,6 +8,8 @@
 | DbCustomerManagedKeyID | The ID of the CMK used to encrypt DynamoDB tables at rest. Only present if `IsCustomerManagedKeyEnabled` |
 | DbSessionTTL | Time to live for a session item (seconds)|
 | DbSessionTableName | The name of the session table in DynamoDB |
+| DbSessionTableArn | The ARN of the session table in DynamoDB |
+| DbSessionTableAccessTokenIndexWithEventDataIpvIndexArn | The ARN of the Access Token Index With Event Data Ipv Global Secondary Index (GSI). |
 | DbPersonIdentityTableName | The name of the person identity table in DynamoDB |
 | LambdaSessionFunctionName | The name of the session function |
 | LambdaUpdateSessionDataFunctionName | The name of the update session data function |
