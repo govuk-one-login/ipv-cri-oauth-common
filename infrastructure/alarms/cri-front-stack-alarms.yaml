@@ -1,0 +1,726 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+Description: "Digital Identity CRI Shared Frontend Alarm Template - Used per ECS frontend service. 7 alarms + 2 optional canary alarms are created per service."
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Required general configuration
+        Parameters:
+          - Environment
+          - MainStackName
+          - CriticalAlarmTopic
+          - WarningAlarmTopic
+          - SupportManualURL
+          - EcsClusterName
+          - LoadBalancerFullName
+          - TargetGroupFullName
+          - ApiGatewayId
+
+      - Label:
+          default: Optional disabling of specific alarms
+        Parameters:
+          - EnableNoTaskCountAlarm
+          - EnableBelowMinTaskCountAlarm
+          - EnableELB5XXCountAlarm
+          - EnableFE5XXCriticalAlarm
+          - EnableFE4XXErrorAlarm
+          - EnableFELatencyAlarmP95
+          - EnableFELatencyAlarmP99
+          - EnableCanaryTargetGroup5xxAlarm
+          - EnableCanaryELB5xxAlarm
+
+      - Label:
+          default: Optional NoTaskCountAlarm configuration
+        Parameters:
+          - NoTaskCountAlarmEvaluationPeriods
+          - NoTaskCountAlarmDatapointsToAlarm
+          - NoTaskCountAlarmPeriod
+
+      - Label:
+          default: Optional BelowMinTaskCountAlarm configuration
+        Parameters:
+          - BelowMinTaskCountAlarmEvaluationPeriods
+          - BelowMinTaskCountAlarmDatapointsToAlarm
+          - BelowMinTaskCountAlarmThreshold
+          - BelowMinTaskCountAlarmPeriod
+
+      - Label:
+          default: Optional ELB5XXCountAlarm configuration
+        Parameters:
+          - ELB5XXCountAlarmEvaluationPeriods
+          - ELB5XXCountAlarmDatapointsToAlarm
+          - ELB5XXCountAlarmThreshold
+          - ELB5XXCountAlarmPeriod
+
+      - Label:
+          default: Optional FE5XXCriticalAlarm configuration
+        Parameters:
+          - FE5XXCriticalAlarmEvaluationPeriods
+          - FE5XXCriticalAlarmDatapointsToAlarm
+          - FE5XXCriticalAlarmThreshold
+          - FE5XXCriticalAlarmPeriod
+          - FE5XXCriticalAlarmMinInvocationCount
+
+      - Label:
+          default: Optional FE4XXErrorAlarm configuration
+        Parameters:
+          - FE4XXErrorAlarmEvaluationPeriods
+          - FE4XXErrorAlarmDatapointsToAlarm
+          - FE4XXErrorAlarmThreshold
+          - FE4XXErrorAlarmPeriod
+          - FE4XXErrorAlarmMinInvocationCount
+          - FE4XXErrorAlarmMinErrorCount
+
+      - Label:
+          default: Optional FELatencyAlarmP95 configuration
+        Parameters:
+          - FELatencyAlarmP95EvaluationPeriods
+          - FELatencyAlarmP95DatapointsToAlarm
+          - FELatencyAlarmP95Threshold
+          - FELatencyAlarmP95Period
+          - FELatencyAlarmP95MinInvocationCount
+
+      - Label:
+          default: Optional FELatencyAlarmP99 configuration
+        Parameters:
+          - FELatencyAlarmP99EvaluationPeriods
+          - FELatencyAlarmP99DatapointsToAlarm
+          - FELatencyAlarmP99Threshold
+          - FELatencyAlarmP99Period
+          - FELatencyAlarmP99MinInvocationCount
+
+      - Label:
+          default: Optional CanaryTargetGroup5xxAlarm configuration
+        Parameters:
+          - CanaryTargetGroup5xxAlarmEvaluationPeriods
+          - CanaryTargetGroup5xxAlarmDatapointsToAlarm
+          - CanaryTargetGroup5xxAlarmThreshold
+
+      - Label:
+          default: Optional CanaryELB5xxAlarm configuration
+        Parameters:
+          - CanaryELB5xxAlarmEvaluationPeriods
+          - CanaryELB5xxAlarmDatapointsToAlarm
+          - CanaryELB5xxAlarmThreshold
+
+Parameters:
+  #########################
+  ## Required parameters ##
+  #########################
+  Environment:
+    Type: String
+    Description: "Environment name"
+  MainStackName:
+    Type: String
+    Description: "Name of the main (parent) stack"
+  CriticalAlarmTopic:
+    Type: String
+    Description: "SNS topic ARN for critical alarms, ensure this is correct for environment"
+  WarningAlarmTopic:
+    Type: String
+    Description: "SNS topic ARN for warning alarms, ensure this is correct for environment"
+  SupportManualURL:
+    Type: String
+    Description: "URL for the support manual / runbook"
+  EcsClusterName:
+    Type: String
+    Description: "Name of the ECS cluster to monitor"
+  LoadBalancerFullName:
+    Type: String
+    Description: "Full name of the ALB (from LoadBalancer.LoadBalancerFullName)"
+  TargetGroupFullName:
+    Type: String
+    Description: "Full name of the ALB Target Group (from TargetGroup.TargetGroupFullName)"
+  ApiGatewayId:
+    Type: String
+    Description: "ID of the API Gateway HTTP API (used for 5XX percentage alarm)"
+
+  #################################################
+  ## Optional (en/dis)-abling of specific alarms ##
+  #################################################
+  EnableNoTaskCountAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of NoTaskCountAlarm (zero tasks = complete outage)"
+    Default: "true"
+  EnableBelowMinTaskCountAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of BelowMinTaskCountAlarm (tasks below desired minimum)"
+    Default: "true"
+  EnableELB5XXCountAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of ELB5XXCountAlarm (raw 5XX count from target group)"
+    Default: "true"
+  EnableFE5XXCriticalAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of FE5XXCriticalAlarm (percentage-based 5XX critical)"
+    Default: "true"
+  EnableFE4XXErrorAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of FE4XXErrorAlarm (percentage-based 4XX warning)"
+    Default: "true"
+  EnableFELatencyAlarmP95:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of FELatencyAlarmP95 (P95 latency exceeds threshold)"
+    Default: "true"
+  EnableFELatencyAlarmP99:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of FELatencyAlarmP99 (P99 latency exceeds threshold)"
+    Default: "true"
+  EnableCanaryTargetGroup5xxAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of CanaryTargetGroup5xxAlarm (target group 5XX percentage during canary deployment)"
+    Default: "false"
+  EnableCanaryELB5xxAlarm:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Description: "Enable creation of CanaryELB5xxAlarm (ELB-level 5XX percentage during canary deployment - highly sensitive)"
+    Default: "false"
+
+  ##############################################
+  ## NoTaskCountAlarm Optional Configuration ##
+  ##############################################
+  NoTaskCountAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 2
+  NoTaskCountAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  NoTaskCountAlarmPeriod:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 60
+
+  ####################################################
+  ## BelowMinTaskCountAlarm Optional Configuration ##
+  ####################################################
+  BelowMinTaskCountAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 3
+  BelowMinTaskCountAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 3
+  BelowMinTaskCountAlarmThreshold:
+    Type: Number
+    Description: "Task count threshold - alarm fires when TaskCount is below this value"
+    Default: 2
+  BelowMinTaskCountAlarmPeriod:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 300
+
+  #############################################
+  ## ELB5XXCountAlarm Optional Configuration ##
+  #############################################
+  ELB5XXCountAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 5
+  ELB5XXCountAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 5
+  ELB5XXCountAlarmThreshold:
+    Type: Number
+    Description: "Threshold for each period - i.e. count of 5XX errors from target group"
+    Default: 1
+  ELB5XXCountAlarmPeriod:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 60
+
+  ###############################################
+  ## FE5XXCriticalAlarm Optional Configuration ##
+  ###############################################
+  FE5XXCriticalAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 5
+  FE5XXCriticalAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  FE5XXCriticalAlarmThreshold:
+    Type: Number
+    Description: "Threshold for each period - i.e. percentage of requests that are 5XX errors"
+    Default: 80
+  FE5XXCriticalAlarmPeriod:
+    Type: Number
+    Description: "Length of each period in seconds - i.e. how often a datapoint is calculated"
+    Default: 60
+  FE5XXCriticalAlarmMinInvocationCount:
+    Type: Number
+    Description: "Minimum number of requests within a period for data to be evaluated (suppresses at low traffic)"
+    Default: 10
+
+  ##############################################
+  ## FE4XXErrorAlarm Optional Configuration  ##
+  ##############################################
+  FE4XXErrorAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 5
+  FE4XXErrorAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  FE4XXErrorAlarmThreshold:
+    Type: Number
+    Description: "Threshold for each period - i.e. percentage of requests that are 4XX errors"
+    Default: 20
+  FE4XXErrorAlarmPeriod:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 60
+  FE4XXErrorAlarmMinInvocationCount:
+    Type: Number
+    Description: "Minimum number of requests within a period for data to be evaluated"
+    Default: 150
+  FE4XXErrorAlarmMinErrorCount:
+    Type: Number
+    Description: "Minimum number of 4XX errors within a period for data to be evaluated"
+    Default: 2
+
+  ################################################
+  ## FELatencyAlarmP95 Optional Configuration  ##
+  ################################################
+  FELatencyAlarmP95EvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 5
+  FELatencyAlarmP95DatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  FELatencyAlarmP95Threshold:
+    Type: Number
+    Description: "Threshold in milliseconds - alarm fires when P95 latency exceeds this"
+    Default: 1000
+  FELatencyAlarmP95Period:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 60
+  FELatencyAlarmP95MinInvocationCount:
+    Type: Number
+    Description: "Minimum number of requests within a period for data to be evaluated"
+    Default: 25
+
+  ################################################
+  ## FELatencyAlarmP99 Optional Configuration  ##
+  ################################################
+  FELatencyAlarmP99EvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 5
+  FELatencyAlarmP99DatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  FELatencyAlarmP99Threshold:
+    Type: Number
+    Description: "Threshold in milliseconds - alarm fires when P99 latency exceeds this"
+    Default: 2500
+  FELatencyAlarmP99Period:
+    Type: Number
+    Description: "Length of each period in seconds"
+    Default: 60
+  FELatencyAlarmP99MinInvocationCount:
+    Type: Number
+    Description: "Minimum number of requests within a period for data to be evaluated"
+    Default: 150
+
+  ###########################################################
+  ## CanaryTargetGroup5xxAlarm Optional Configuration      ##
+  ###########################################################
+  CanaryTargetGroup5xxAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate"
+    Default: 2
+  CanaryTargetGroup5xxAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 2
+  CanaryTargetGroup5xxAlarmThreshold:
+    Type: Number
+    Description: "Threshold - percentage of target group requests that are 5XX"
+    Default: 5
+
+  ################################################
+  ## CanaryELB5xxAlarm Optional Configuration  ##
+  ################################################
+  CanaryELB5xxAlarmEvaluationPeriods:
+    Type: Number
+    Description: "Number of periods to evaluate (keep low for fast rollback)"
+    Default: 1
+  CanaryELB5xxAlarmDatapointsToAlarm:
+    Type: Number
+    Description: "Number of periods (within evaluation period) that must be breaching to alarm"
+    Default: 1
+  CanaryELB5xxAlarmThreshold:
+    Type: Number
+    Description: "Threshold - percentage of ELB requests that are 5XX (highly sensitive for canary)"
+    Default: 2
+
+Conditions:
+  CreateNoTaskCountAlarm: !Equals [!Ref EnableNoTaskCountAlarm, "true"]
+  CreateBelowMinTaskCountAlarm: !Equals [!Ref EnableBelowMinTaskCountAlarm, "true"]
+  CreateELB5XXCountAlarm: !Equals [!Ref EnableELB5XXCountAlarm, "true"]
+  CreateFE5XXCriticalAlarm: !Equals [!Ref EnableFE5XXCriticalAlarm, "true"]
+  CreateFE4XXErrorAlarm: !Equals [!Ref EnableFE4XXErrorAlarm, "true"]
+  CreateFELatencyAlarmP95: !Equals [!Ref EnableFELatencyAlarmP95, "true"]
+  CreateFELatencyAlarmP99: !Equals [!Ref EnableFELatencyAlarmP99, "true"]
+  CreateCanaryTargetGroup5xxAlarm: !Equals [!Ref EnableCanaryTargetGroup5xxAlarm, "true"]
+  CreateCanaryELB5xxAlarm: !Equals [!Ref EnableCanaryELB5xxAlarm, "true"]
+
+Resources:
+  NoTaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateNoTaskCountAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-NoTaskCountAlarm"
+      AlarmDescription: !Sub "${MainStackName} ${Environment} frontend no ECS service tasks. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref CriticalAlarmTopic]
+      OKActions: [!Ref CriticalAlarmTopic]
+      InsufficientDataActions: []
+      MetricName: TaskCount
+      Namespace: ECS/ContainerInsights
+      Statistic: Average
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsClusterName
+      Period: !Ref NoTaskCountAlarmPeriod
+      EvaluationPeriods: !Ref NoTaskCountAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref NoTaskCountAlarmDatapointsToAlarm
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  BelowMinTaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateBelowMinTaskCountAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-BelowMinTaskCountAlarm"
+      AlarmDescription: !Sub "${MainStackName} ${Environment} frontend below desired ECS service tasks. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref CriticalAlarmTopic]
+      OKActions: [!Ref CriticalAlarmTopic]
+      InsufficientDataActions: []
+      MetricName: TaskCount
+      Namespace: ECS/ContainerInsights
+      Statistic: Average
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsClusterName
+      Period: !Ref BelowMinTaskCountAlarmPeriod
+      EvaluationPeriods: !Ref BelowMinTaskCountAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref BelowMinTaskCountAlarmDatapointsToAlarm
+      Threshold: !Ref BelowMinTaskCountAlarmThreshold
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  ELB5XXCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateELB5XXCountAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-ELB5XXCountAlarm"
+      AlarmDescription: !Sub "${MainStackName} ${Environment} frontend 5XX count on target group. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref CriticalAlarmTopic]
+      OKActions: [!Ref CriticalAlarmTopic]
+      InsufficientDataActions: []
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Dimensions:
+        - Name: TargetGroup
+          Value: !Ref TargetGroupFullName
+        - Name: LoadBalancer
+          Value: !Ref LoadBalancerFullName
+      Period: !Ref ELB5XXCountAlarmPeriod
+      EvaluationPeriods: !Ref ELB5XXCountAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref ELB5XXCountAlarmDatapointsToAlarm
+      Threshold: !Ref ELB5XXCountAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  FE5XXCriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateFE5XXCriticalAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-FE5XXCriticalAlarm"
+      AlarmDescription: !Sub "5XX error percentage exceeds ${FE5XXCriticalAlarmThreshold}% with a minimum of ${FE5XXCriticalAlarmMinInvocationCount} invocations. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref CriticalAlarmTopic]
+      OKActions: [!Ref CriticalAlarmTopic]
+      InsufficientDataActions: []
+      EvaluationPeriods: !Ref FE5XXCriticalAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref FE5XXCriticalAlarmDatapointsToAlarm
+      Threshold: !Ref FE5XXCriticalAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: !Sub "IF(invocations >= ${FE5XXCriticalAlarmMinInvocationCount}, errorPercentage, 0)"
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (error / invocations) * 100
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FE5XXCriticalAlarmPeriod
+            Stat: Sum
+        - Id: error
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5xx
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FE5XXCriticalAlarmPeriod
+            Stat: Sum
+
+  FE4XXErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateFE4XXErrorAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-FE4XXErrorAlarm"
+      AlarmDescription: !Sub "4XX error percentage exceeds ${FE4XXErrorAlarmThreshold}% with a minimum of ${FE4XXErrorAlarmMinInvocationCount} invocations and ${FE4XXErrorAlarmMinErrorCount} errors. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref WarningAlarmTopic]
+      OKActions: [!Ref WarningAlarmTopic]
+      InsufficientDataActions: []
+      EvaluationPeriods: !Ref FE4XXErrorAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref FE4XXErrorAlarmDatapointsToAlarm
+      Threshold: !Ref FE4XXErrorAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: !Sub "IF(invocations < ${FE4XXErrorAlarmMinInvocationCount} || error < ${FE4XXErrorAlarmMinErrorCount}, 0, errorPercentage)"
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (error / invocations) * 100
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FE4XXErrorAlarmPeriod
+            Stat: Sum
+        - Id: error
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 4xx
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FE4XXErrorAlarmPeriod
+            Stat: Sum
+
+  FELatencyAlarmP95:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateFELatencyAlarmP95
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-FELatencyAlarmP95"
+      AlarmDescription: !Sub "P95 latency exceeds ${FELatencyAlarmP95Threshold}ms with a minimum of ${FELatencyAlarmP95MinInvocationCount} invocations. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref WarningAlarmTopic]
+      OKActions: [!Ref WarningAlarmTopic]
+      InsufficientDataActions: []
+      EvaluationPeriods: !Ref FELatencyAlarmP95EvaluationPeriods
+      DatapointsToAlarm: !Ref FELatencyAlarmP95DatapointsToAlarm
+      Threshold: !Ref FELatencyAlarmP95Threshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: latencyThreshold
+          Label: latencyThreshold
+          ReturnData: true
+          Expression: !Sub "IF(invocations < ${FELatencyAlarmP95MinInvocationCount}, 0, latency95Percentile)"
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FELatencyAlarmP95Period
+            Stat: Sum
+        - Id: latency95Percentile
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Latency
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FELatencyAlarmP95Period
+            Stat: p95
+
+  FELatencyAlarmP99:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateFELatencyAlarmP99
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-FELatencyAlarmP99"
+      AlarmDescription: !Sub "P99 latency exceeds ${FELatencyAlarmP99Threshold}ms with a minimum of ${FELatencyAlarmP99MinInvocationCount} invocations. Runbook: ${SupportManualURL}"
+      ActionsEnabled: true
+      AlarmActions: [!Ref WarningAlarmTopic]
+      OKActions: [!Ref WarningAlarmTopic]
+      InsufficientDataActions: []
+      EvaluationPeriods: !Ref FELatencyAlarmP99EvaluationPeriods
+      DatapointsToAlarm: !Ref FELatencyAlarmP99DatapointsToAlarm
+      Threshold: !Ref FELatencyAlarmP99Threshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: latencyThreshold
+          Label: latencyThreshold
+          ReturnData: true
+          Expression: !Sub "IF(invocations < ${FELatencyAlarmP99MinInvocationCount}, 0, latency99Percentile)"
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FELatencyAlarmP99Period
+            Stat: Sum
+        - Id: latency99Percentile
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Latency
+              Dimensions:
+                - Name: ApiId
+                  Value: !Ref ApiGatewayId
+            Period: !Ref FELatencyAlarmP99Period
+            Stat: p99
+
+  ####################################################################
+  #                                                                  #
+  # Canary Deployment Alarms (disabled by default)                   #
+  #                                                                  #
+  ####################################################################
+
+  CanaryTargetGroup5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCanaryTargetGroup5xxAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-CanaryTargetGroup5xxAlarm"
+      AlarmDescription: !Sub "Target group 5XX errors exceed ${CanaryTargetGroup5xxAlarmThreshold}% of all traffic during canary deployment. Runbook: ${SupportManualURL}"
+      AlarmActions: [!Ref WarningAlarmTopic]
+      OKActions: [!Ref WarningAlarmTopic]
+      EvaluationPeriods: !Ref CanaryTargetGroup5xxAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref CanaryTargetGroup5xxAlarmDatapointsToAlarm
+      Threshold: !Ref CanaryTargetGroup5xxAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: e1
+          Label: ErrorPercent
+          ReturnData: true
+          Expression: (m1/m2)*100
+        - Id: m1
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApplicationELB
+              MetricName: HTTPCode_Target_5XX_Count
+              Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref LoadBalancerFullName
+            Period: 60
+            Stat: Sum
+        - Id: m2
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApplicationELB
+              MetricName: RequestCount
+              Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref LoadBalancerFullName
+            Period: 60
+            Stat: Sum
+
+  CanaryELB5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCanaryELB5xxAlarm
+    Properties:
+      AlarmName: !Sub "${MainStackName}-${Environment}-CanaryELB5xxAlarm"
+      AlarmDescription: !Sub "ELB-level 5XX errors exceed ${CanaryELB5xxAlarmThreshold}% of all traffic during canary deployment (highly sensitive). Runbook: ${SupportManualURL}"
+      AlarmActions: [!Ref CriticalAlarmTopic]
+      OKActions: [!Ref CriticalAlarmTopic]
+      EvaluationPeriods: !Ref CanaryELB5xxAlarmEvaluationPeriods
+      DatapointsToAlarm: !Ref CanaryELB5xxAlarmDatapointsToAlarm
+      Threshold: !Ref CanaryELB5xxAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: e1
+          Label: ErrorPercent
+          ReturnData: true
+          Expression: (m1/m2)*100
+        - Id: m1
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApplicationELB
+              MetricName: HTTPCode_ELB_5XX_Count
+              Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref LoadBalancerFullName
+            Period: 60
+            Stat: Sum
+        - Id: m2
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApplicationELB
+              MetricName: RequestCount
+              Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref LoadBalancerFullName
+            Period: 60
+            Stat: Sum
