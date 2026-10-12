@@ -6,7 +6,6 @@ describe("auth-request-validator", () => {
     describe("validate", () => {
         let authRequestValidator: AuthorizationRequestValidator;
         const existingClientId = "a-valid-clientId";
-        // const configuredRedirectUri = "a-valid-redirect-uri";
         beforeEach(() => {
             authRequestValidator = new AuthorizationRequestValidator();
         });
@@ -25,7 +24,6 @@ describe("auth-request-validator", () => {
             beforeEach(() => {
                 queryStringParams = {
                     client_id: "a-valid-clientId",
-                    // redirect_uri: "a-valid-redirect-uri",
                     response_type: "a-valid-response-type",
                 };
             });
@@ -77,7 +75,6 @@ describe("auth-request-validator", () => {
                 });
                 it("should return missing response type parameter error", () => {
                     queryStringParams["client_id"] = "a-valid-clientId";
-                    // queryStringParams["redirect_uri"] = "a-valid-redirect-uri";
 
                     expect(() => authRequestValidator.validate(queryStringParams, existingClientId)).toThrow(
                         expect.objectContaining({
