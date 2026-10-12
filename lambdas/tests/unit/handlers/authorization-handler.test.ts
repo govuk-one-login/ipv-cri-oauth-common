@@ -113,7 +113,6 @@ describe("authorization-handler.ts", () => {
         vi.spyOn(sessionService, "getSession").mockResolvedValue(sessionItem as SessionItem);
         const clientConfig = new Map<string, string>();
         clientConfig.set("code", "abc");
-        clientConfig.set("redirectUri", "http://123.com");
         vi.spyOn(mockConfigService.prototype, "getClientConfig").mockReturnValue(clientConfig);
     });
 
@@ -127,7 +126,6 @@ describe("authorization-handler.ts", () => {
             body = {
                 code: "",
                 grant_type: "authorization_code",
-                redirect_uri: "",
                 client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
                 client_assertion: "2",
             };
@@ -142,7 +140,6 @@ describe("authorization-handler.ts", () => {
             beforeEach(() => {
                 queryString = {
                     client_id: "1",
-                    redirect_uri: "http://123.com",
                     response_type: "test",
                 } as APIGatewayProxyEventQueryStringParameters;
             });
@@ -201,7 +198,6 @@ describe("authorization-handler.ts", () => {
                         headers: headers,
                         queryStringParameters: {
                             client_id: "1",
-                            redirect_uri: "http://123.com",
                             response_type: "a_response_type",
                         },
                     } as unknown as APIGatewayProxyEvent,
@@ -239,7 +235,6 @@ describe("authorization-handler.ts", () => {
                         headers: headers,
                         queryStringParameters: {
                             client_id: "1",
-                            redirect_uri: "http://123.com",
                             response_type: "a_response_type",
                         },
                     } as unknown as APIGatewayProxyEvent,
@@ -277,7 +272,6 @@ describe("authorization-handler.ts", () => {
                         headers: headers,
                         queryStringParameters: {
                             client_id: "1",
-                            redirect_uri: "http://123.com",
                             response_type: "a_response_type",
                         },
                     } as unknown as APIGatewayProxyEvent,
@@ -315,7 +309,6 @@ describe("authorization-handler.ts", () => {
                         headers: headers,
                         queryStringParameters: {
                             client_id: "1",
-                            redirect_uri: "http://123.com",
                             response_type: "a_response_type",
                         },
                     } as unknown as APIGatewayProxyEvent,
@@ -350,7 +343,6 @@ describe("authorization-handler.ts", () => {
             it("should fail validation when response_type is missing from queryString", async () => {
                 const queryString = {
                     client_id: "1",
-                    redirect_uri: "http://123.com",
                 } as APIGatewayProxyEventQueryStringParameters;
 
                 const output = await lambdaHandler(
@@ -371,7 +363,7 @@ describe("authorization-handler.ts", () => {
                 );
                 expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
             });
-            it("should fail validation when the redirect_uri is missing from from queryString", async () => {
+            it("should not fail validation when the redirect_uri is missing from from queryString", async () => {
                 const queryString = {
                     client_id: "1",
                     response_type: "test",
@@ -386,18 +378,10 @@ describe("authorization-handler.ts", () => {
                     {} as Context,
                 );
 
-                expect(output.statusCode).toBe(400);
-                expect(output.body).toContain("Session Validation Exception");
-
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: 1019: Session Validation Exception - Missing redirect_uri parameter",
-                    expect.any(SessionValidationError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+                expect(output.statusCode).toBe(200);
             });
             it("should fail validation when the client_id is missing from queryString", async () => {
                 const queryString = {
-                    redirect_uri: "http://123.com",
                     response_type: "test",
                 } as APIGatewayProxyEventQueryStringParameters;
 
