@@ -35,14 +35,14 @@ export class AuthorizationLambda implements LambdaInterface {
 
             const sessionItem = event.body as unknown as SessionItem;
             logger.info("Session found");
-            const clientConfig = configService.getClientConfig(sessionItem.clientId);
+            // const clientConfig = configService.getClientConfig(sessionItem.clientId);
 
             if (process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "CRI") {
                 logger.info("Validating session");
                 this.authorizationRequestValidator.validate(
                     event.queryStringParameters,
                     sessionItem.clientId,
-                    clientConfig?.get(ClientConfigKey.JWT_REDIRECT_URI) as string,
+                    // clientConfig?.get(ClientConfigKey.JWT_REDIRECT_URI) as string,
                 );
                 logger.info("Session validated");
             }
