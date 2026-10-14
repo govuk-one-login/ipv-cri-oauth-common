@@ -28,7 +28,7 @@ describe("auth-request-validator", () => {
                 };
             });
 
-            describe("with an existing client id and the configured redirect_uri", () => {
+            describe("with an existing client id", () => {
                 it("should be called successfully and not throw any error", () => {
                     expect(() => authRequestValidator.validate(queryStringParams, existingClientId)).not.toThrow();
                 });
@@ -44,10 +44,9 @@ describe("auth-request-validator", () => {
                     );
                 });
             });
-            describe("client id and redirect_uri not matching", () => {
+            describe("client id not matching", () => {
                 it("first invalid returned i.e. client_id uri parameter error", () => {
-                    queryStringParams["client_id"] = "an-unexpected-redirect-uri-in-the-request";
-                    queryStringParams["redirect_uri"] = "an-unexpected-redirect-uri-in-the-request";
+                    queryStringParams["client_id"] = "an-invalid-client-id-in-the-request";
                     expect(() => authRequestValidator.validate(queryStringParams, existingClientId)).toThrow(
                         expect.objectContaining({
                             details: "Invalid client_id parameter",
@@ -64,7 +63,6 @@ describe("auth-request-validator", () => {
                     queryStringParams = {};
                 });
                 it("should return missing client id parameter error", () => {
-                    queryStringParams["redirect_uri"] = "a-valid-redirect-uri";
                     queryStringParams["response_type"] = "a-valid-response-type";
                     expect(() => authRequestValidator.validate(queryStringParams, existingClientId)).toThrow(
                         expect.objectContaining({

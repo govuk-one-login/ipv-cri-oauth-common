@@ -363,7 +363,7 @@ describe("authorization-handler.ts", () => {
                 );
                 expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
             });
-            it("should not fail validation when the redirect_uri is missing from from queryString", async () => {
+            it("should not fail validation when the redirect_uri is missing from queryString", async () => {
                 const queryString = {
                     client_id: "1",
                     response_type: "test",
