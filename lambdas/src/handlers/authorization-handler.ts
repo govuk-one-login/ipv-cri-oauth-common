@@ -54,18 +54,12 @@ export class AuthorizationLambda implements LambdaInterface {
 
             const authorizationResponse = {
                 state: {
-                    value:
-                        process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "IPV"
-                            ? sessionItem.state
-                            : event.queryStringParameters?.["state"],
+                    value: sessionItem.state,
                 },
                 authorizationCode: {
                     value: sessionItem.authorizationCode,
                 },
-                redirectionURI:
-                    process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "IPV"
-                        ? sessionItem.redirectUri
-                        : event.queryStringParameters?.["redirect_uri"],
+                redirectionURI: sessionItem.redirectUri,
             };
 
             logger.info("Authorisation response created");
