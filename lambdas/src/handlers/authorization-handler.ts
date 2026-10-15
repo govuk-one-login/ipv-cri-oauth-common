@@ -35,15 +35,10 @@ export class AuthorizationLambda implements LambdaInterface {
 
             const sessionItem = event.body as unknown as SessionItem;
             logger.info("Session found");
-            const clientConfig = configService.getClientConfig(sessionItem.clientId);
 
             if (process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "CRI") {
                 logger.info("Validating session");
-                this.authorizationRequestValidator.validate(
-                    event.queryStringParameters,
-                    sessionItem.clientId,
-                    clientConfig?.get(ClientConfigKey.JWT_REDIRECT_URI) as string,
-                );
+                this.authorizationRequestValidator.validate(event.queryStringParameters, sessionItem.clientId);
                 logger.info("Session validated");
             }
 
@@ -59,18 +54,12 @@ export class AuthorizationLambda implements LambdaInterface {
 
             const authorizationResponse = {
                 state: {
-                    value:
-                        process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "IPV"
-                            ? sessionItem.state
-                            : event.queryStringParameters?.["state"],
+                    value: sessionItem.state,
                 },
                 authorizationCode: {
                     value: sessionItem.authorizationCode,
                 },
-                redirectionURI:
-                    process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "IPV"
-                        ? sessionItem.redirectUri
-                        : event.queryStringParameters?.["redirect_uri"],
+                redirectionURI: sessionItem.redirectUri,
             };
 
             logger.info("Authorisation response created");
