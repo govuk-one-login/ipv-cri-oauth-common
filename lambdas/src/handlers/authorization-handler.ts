@@ -3,9 +3,8 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { SessionService } from "../services/session-service";
 import { LambdaInterface } from "@aws-lambda-powertools/commons/types";
 import { ConfigService } from "../common/config/config-service";
-import { AuthorizationRequestValidator } from "../services/auth-request-validator";
 import { AwsClientType, createClient } from "../common/aws-client-factory";
-import { ClientConfigKey, CommonConfigKey } from "../types/config-keys";
+import { CommonConfigKey } from "../types/config-keys";
 import { AccessDeniedError, errorPayload } from "../common/utils/errors";
 import errorMiddleware from "../middlewares/error/error-middleware";
 import initialiseConfigMiddleware from "../middlewares/config/initialise-config-middleware";
@@ -13,7 +12,6 @@ import getSessionByIdMiddleware from "../middlewares/session/get-session-by-id-m
 import { SessionItem } from "@govuk-one-login/cri-types";
 import { injectLambdaContext } from "@aws-lambda-powertools/logger/middleware";
 import setGovUkSigningJourneyIdMiddleware from "../middlewares/session/set-gov-uk-signing-journey-id-middleware";
-import initialiseClientConfigMiddleware from "../middlewares/config/initialise-client-config-middleware";
 import setRequestedVerificationScoreMiddleware from "../middlewares/session/set-requested-verification-score-middleware";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { logger } from "@govuk-one-login/cri-logger";
@@ -26,8 +24,6 @@ const AUTHORIZATION_SENT_METRIC = "authorization_sent";
 const NO_AUTHORIZATION_CODE = "no_authorization_code";
 
 export class AuthorizationLambda implements LambdaInterface {
-    constructor(private readonly authorizationRequestValidator: AuthorizationRequestValidator) {}
-
     @metrics.logMetrics({ throwOnEmptyMetrics: false, captureColdStartMetric: true })
     public async handler(event: APIGatewayProxyEvent, _context: unknown): Promise<APIGatewayProxyResult> {
         try {
@@ -36,14 +32,8 @@ export class AuthorizationLambda implements LambdaInterface {
             const sessionItem = event.body as unknown as SessionItem;
             logger.info("Session found");
 
-            if (process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE === "CRI") {
-                logger.info("Validating session");
-                this.authorizationRequestValidator.validate(event.queryStringParameters, sessionItem.clientId);
-                logger.info("Session validated");
-            }
-
             if (!sessionItem.authorizationCode) {
-                logger.info("No Auth Code retrieved returning Oauth access_denied");
+                logger.info("No Auth Code retrieved - returning Oauth access_denied");
                 captureMetric(NO_AUTHORIZATION_CODE);
                 throw new AccessDeniedError(
                     sessionItem.redirectUri,
@@ -76,7 +66,7 @@ export class AuthorizationLambda implements LambdaInterface {
     }
 }
 const sessionService = new SessionService(dynamoDbClient, configService);
-const handlerClass = new AuthorizationLambda(new AuthorizationRequestValidator());
+const handlerClass = new AuthorizationLambda();
 export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
     .use(
         errorMiddleware(logger, {
@@ -92,11 +82,5 @@ export const lambdaHandler = middy(handlerClass.handler.bind(handlerClass))
         }),
     )
     .use(getSessionByIdMiddleware({ sessionService: sessionService }))
-    .use(
-        initialiseClientConfigMiddleware({
-            configService: configService,
-            client_config_keys: [ClientConfigKey.JWT_REDIRECT_URI],
-        }),
-    )
     .use(setGovUkSigningJourneyIdMiddleware(logger))
     .use(setRequestedVerificationScoreMiddleware(logger));
