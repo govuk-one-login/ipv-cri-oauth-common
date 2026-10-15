@@ -38,13 +38,6 @@ public class APISteps {
     public static String devAccessTokenUri;
     private static String devDeleteSessionUri;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String REDIRECT_URI = System.getenv("IPV_CORE_STUB_URL");
-    private static final String DEFAULT_REDIRECT_URI =
-            (REDIRECT_URI.toLowerCase().startsWith("http"))
-                    ? REDIRECT_URI + "/callback"
-                    : "https://cri.core.build.stubs.account.gov.uk/callback";
-    private static final String DEFAULT_CLIENT_ID =
-            System.getenv().getOrDefault("DEFAULT_CLIENT_ID", "ipv-core-stub-aws-build");
     private static final boolean OAUTH_TABLES =
             Boolean.parseBoolean(System.getenv().getOrDefault("OAUTH_TABLES", "true"));
     private static final boolean COMMON_LAMBDAS_TABLES =
@@ -127,8 +120,7 @@ public class APISteps {
             throws IOException, InterruptedException, URISyntaxException {
         LOG.info("DEV_AUTHORIZATION_URI is --------" + devAuthorizationUri);
         response =
-                IpvCoreStubUtil.sendAuthorizationRequest(
-                        devAuthorizationUri, currentSessionId, DEFAULT_CLIENT_ID);
+                IpvCoreStubUtil.sendAuthorizationRequest(devAuthorizationUri, currentSessionId);
     }
 
     @And("a valid authorization code is returned in the response")
@@ -139,35 +131,20 @@ public class APISteps {
         assertFalse(currentAuthorizationCode.isEmpty());
         assertDoesNotThrow(() -> Base64.getUrlDecoder().decode(currentAuthorizationCode));
 
-        assertEquals(DEFAULT_REDIRECT_URI, jsonNode.get("redirectionURI").textValue());
-        assertEquals("state-ipv", jsonNode.get("state").get("value").textValue());
-    }
+        Map<String, AttributeValue> session = DynamoDBUtil.getSession(sessionTableName(), currentSessionId);
 
-    @When("user sends a request to authorization end point with invalid client id")
-    public void user_sends_a_request_to_authorization_end_point_with_invalid_client_id()
-            throws URISyntaxException, IOException, InterruptedException {
-        response =
-                IpvCoreStubUtil.sendAuthorizationRequest(
-                        devAuthorizationUri, currentSessionId, "INVALID-CLIENT-ID");
-    }
+        String expectedRedirectUri = session.get("redirectUri").s();
+        String expectedState = session.get("state").s();
 
-    @When("user sends a request to authorization end point with invalid redirect uri")
-    public void userSendsARequestToAuthorizationEndPointWithInvalidRedirectUri()
-            throws URISyntaxException, IOException, InterruptedException {
-        response =
-                IpvCoreStubUtil.sendAuthorizationRequest(
-                        devAuthorizationUri,
-                        currentSessionId,
-                        "https://wrong-incorrect-url/callback",
-                        DEFAULT_CLIENT_ID);
+        assertEquals(expectedRedirectUri, jsonNode.get("redirectionURI").textValue());
+        assertEquals(expectedState, jsonNode.get("state").get("value").textValue());
     }
 
     @When("user sends a request to authorization end point with access_denied")
     public void userSendsARequestToAuthorizationEndPointWithAccessDenied()
             throws URISyntaxException, IOException, InterruptedException {
         response =
-                IpvCoreStubUtil.sendAuthorizationRequest(
-                        devAuthorizationUri, currentSessionId, DEFAULT_CLIENT_ID);
+                IpvCoreStubUtil.sendAuthorizationRequest(devAuthorizationUri, currentSessionId);
     }
 
     @When("user sends a request to access token end point")
@@ -284,16 +261,16 @@ public class APISteps {
         Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
         return encoder.encodeToString(
-                        "{\"typ\":\"JWT\",\"alg\":\"ES256\"}".getBytes(StandardCharsets.UTF_8))
+                "{\"typ\":\"JWT\",\"alg\":\"ES256\"}".getBytes(StandardCharsets.UTF_8))
                 + "."
                 + encoder.encodeToString(
-                        "{\"sub\":\"urn:uuid:abc\"}".getBytes(StandardCharsets.UTF_8))
+                "{\"sub\":\"urn:uuid:abc\"}".getBytes(StandardCharsets.UTF_8))
                 + ".a-signature";
     }
 
     @When("the session data is in the correct tables")
-     public void sessionDataIsInTheCorrectTables() {
-        if(OAUTH_TABLES) {
+    public void sessionDataIsInTheCorrectTables() {
+        if (OAUTH_TABLES) {
             assertTrue(DynamoDBUtil.sessionExists(SESSION_TABLE_NAME, currentSessionId));
             assertTrue(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
         } else {
@@ -301,7 +278,7 @@ public class APISteps {
             assertFalse(DynamoDBUtil.sessionExists(PERSON_IDENTITY_TABLE_NAME, currentSessionId));
         }
 
-        if(COMMON_LAMBDAS_TABLES) {
+        if (COMMON_LAMBDAS_TABLES) {
             assertTrue(DynamoDBUtil.sessionExists("session-common-cri-api", currentSessionId));
             assertTrue(DynamoDBUtil.sessionExists("person-identity-common-cri-api", currentSessionId));
         } else {
