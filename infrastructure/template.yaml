@@ -544,7 +544,6 @@ Resources:
             - IsUsingCommonLambdasTables
             - !Sub "{{resolve:ssm:/${CommonLambdasStackName}/SessionTableName}}"
             - !Ref SessionTable
-          ENV_VAR_AUTHORIZATION_REQUEST_TYPE: !Ref AuthorizationRequestType
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       AutoPublishCodeSha256: !Ref LambdaVersionHash

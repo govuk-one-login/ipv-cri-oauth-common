@@ -117,30 +117,11 @@ public class IpvCoreStubUtil {
         return sendHttpRequest(request);
     }
 
-    public static HttpResponse<String> sendAuthorizationRequest(
-            String apiPath, String sessionId, String clientId)
-            throws URISyntaxException, IOException, InterruptedException {
-        return sendAuthorizationRequest(apiPath, sessionId, null, clientId);
-    }
-
-    public static HttpResponse<String> sendAuthorizationRequest(
-            String apiPath, String sessionId, String redirectUri, String clientId)
+    public static HttpResponse<String> sendAuthorizationRequest(String apiPath, String sessionId)
             throws URISyntaxException, IOException, InterruptedException {
         var url =
                 new URIBuilder(getPrivateApiEndpoint())
                         .setPath(apiPath)
-                        .addParameter(
-                                "redirect_uri",
-                                Optional.ofNullable(redirectUri)
-                                        .orElse(
-                                                new URIBuilder(getIPVCoreStubURL())
-                                                        .setPath("/callback")
-                                                        .build()
-                                                        .toString()))
-                        .addParameter("client_id", clientId)
-                        .addParameter("response_type", "code")
-                        .addParameter("scope", "openid")
-                        .addParameter("state", "state-ipv")
                         .build();
         HttpRequest request = getHttpRequest(sessionId, url);
 

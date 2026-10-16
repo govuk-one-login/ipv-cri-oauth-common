@@ -6,27 +6,20 @@ import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
 import { AuthorizationLambda } from "../../../src/handlers/authorization-handler";
 import { ConfigService } from "../../../src/common/config/config-service";
 import { SessionService } from "../../../src/services/session-service";
-import { AuthorizationRequestValidator } from "../../../src/services/auth-request-validator";
 import { SessionItem, UnixSecondsTimestamp } from "@govuk-one-login/cri-types";
-import {
-    APIGatewayProxyEvent,
-    APIGatewayProxyEventHeaders,
-    APIGatewayProxyEventQueryStringParameters,
-} from "aws-lambda/trigger/api-gateway-proxy";
+import { APIGatewayProxyEvent, APIGatewayProxyEventHeaders } from "aws-lambda/trigger/api-gateway-proxy";
 import {
     InvalidRequestError,
     ServerError,
     SessionNotFoundError,
-    SessionValidationError,
     AccessDeniedError,
 } from "../../../src/common/utils/errors";
 import getSessionByIdMiddleware from "../../../src/middlewares/session/get-session-by-id-middleware";
-import { ClientConfigKey, CommonConfigKey } from "../../../src/types/config-keys";
+import { CommonConfigKey } from "../../../src/types/config-keys";
 import initialiseConfigMiddleware from "../../../src/middlewares/config/initialise-config-middleware";
 import errorMiddleware from "../../../src/middlewares/error/error-middleware";
 import { Context } from "aws-lambda";
 import setGovUkSigningJourneyIdMiddleware from "../../../src/middlewares/session/set-gov-uk-signing-journey-id-middleware";
-import initialiseClientConfigMiddleware from "../../../src/middlewares/config/initialise-client-config-middleware";
 import setRequestedVerificationScoreMiddleware from "../../../src/middlewares/session/set-requested-verification-score-middleware";
 import { SSMProvider } from "@aws-lambda-powertools/parameters/ssm";
 import { logger } from "@govuk-one-login/cri-logger";
@@ -61,8 +54,6 @@ describe("authorization-handler.ts", () => {
     const metricsSpy = vi.mocked(captureMetric);
     const configService = new ConfigService(vi.fn() as unknown as SSMProvider);
     const sessionService = new SessionService(mockDynamoDbClient.prototype, configService);
-    const authorizationRequestValidator = new AuthorizationRequestValidator();
-    const mockConfigService = vi.mocked(ConfigService);
 
     const sessionItem: Partial<SessionItem> = {
         sessionId: "abc",
@@ -77,7 +68,7 @@ describe("authorization-handler.ts", () => {
     };
 
     const buildLambdaHandler = () => {
-        const handlerClass = new AuthorizationLambda(authorizationRequestValidator);
+        const handlerClass = new AuthorizationLambda();
         return middy(handlerClass.handler.bind(handlerClass))
             .use(
                 errorMiddleware(logger, {
@@ -93,459 +84,232 @@ describe("authorization-handler.ts", () => {
                 }),
             )
             .use(getSessionByIdMiddleware({ sessionService: sessionService }))
-            .use(
-                initialiseClientConfigMiddleware({
-                    configService: configService,
-                    client_config_keys: [ClientConfigKey.JWT_REDIRECT_URI],
-                }),
-            )
             .use(setGovUkSigningJourneyIdMiddleware(logger))
             .use(setRequestedVerificationScoreMiddleware(logger));
     };
 
+    let headers = {};
+    let lambdaHandler: middy.MiddyfiedHandler;
+
     beforeEach(() => {
         vi.resetAllMocks();
-        delete process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE;
         const impl = () => vi.fn().mockImplementation(() => Promise.resolve({ Parameters: [] }));
         mockDynamoDbClient.prototype.send = impl();
         mockDynamoDbClient.prototype.query = impl();
         configService.init = () => Promise.resolve();
         vi.spyOn(sessionService, "getSession").mockResolvedValue(sessionItem as SessionItem);
-        const clientConfig = new Map<string, string>();
-        clientConfig.set("code", "abc");
-        vi.spyOn(mockConfigService.prototype, "getClientConfig").mockReturnValue(clientConfig);
+
+        headers = {
+            "session-id": "1",
+        } as APIGatewayProxyEventHeaders;
+        lambdaHandler = buildLambdaHandler();
     });
 
-    describe("Authorization handler with the Authorization Request Type feature flag set to CRI", () => {
-        let body = {};
-        let headers = {};
-        let lambdaHandler: middy.MiddyfiedHandler;
+    it("should pass with 200 status code and return non empty body", async () => {
+        const loggerSpyAppendkeys = vi.spyOn(logger, "appendKeys");
+        const loggerSpyInfo = vi.spyOn(logger, "info");
 
-        beforeEach(() => {
-            process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE = "CRI";
-            body = {
-                code: "",
-                grant_type: "authorization_code",
-                client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-                client_assertion: "2",
-            };
-            headers = {
-                "session-id": "1",
-            } as APIGatewayProxyEventHeaders;
-            lambdaHandler = buildLambdaHandler();
-        });
+        const output = await lambdaHandler(
+            {
+                headers,
+            } as unknown as APIGatewayProxyEvent,
+            {} as Context,
+        );
 
-        describe("has queryStringParameters parameters all populated", () => {
-            let queryString = {};
-            beforeEach(() => {
-                queryString = {
-                    client_id: "1",
-                    response_type: "test",
-                } as APIGatewayProxyEventQueryStringParameters;
-            });
-            it("should pass with 200 status code and return non empty body", async () => {
-                const loggerSpyAppendkeys = vi.spyOn(logger, "appendKeys");
-                const loggerSpyInfo = vi.spyOn(logger, "info");
-
-                const output = await lambdaHandler(
-                    {
-                        body,
-                        headers,
-                        queryStringParameters: queryString,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(output.statusCode).toBe(200);
-                expect(output.body).not.toBeNull();
-                expect(loggerSpyInfo).toHaveBeenCalledWith("Session found");
-                expect(loggerSpyAppendkeys).toHaveBeenCalledWith({ govuk_signin_journey_id: "1" });
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent");
-            });
-
-            it("should pass with log message and metrics sent", async () => {
-                const loggerSpyAppendkeys = vi.spyOn(logger, "appendKeys");
-                const loggerSpyInfo = vi.spyOn(logger, "info");
-
-                await lambdaHandler(
-                    {
-                        body,
-                        headers,
-                        queryStringParameters: queryString,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(loggerSpyInfo).toHaveBeenCalledWith("Session found");
-                expect(loggerSpyAppendkeys).toHaveBeenCalledWith({ govuk_signin_journey_id: "1" });
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent");
-            });
-        });
-
-        describe("authorization request returns access_denied", () => {
-            let loggerSpyError: MockInstance;
-            beforeEach(() => {
-                loggerSpyError = vi.spyOn(logger, "error");
-            });
-            it("should return 403 status code and return body with access_denied", async () => {
-                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
-                    ...sessionItem,
-                    authorizationCode: undefined,
-                } as SessionItem);
-                const result = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: {
-                            client_id: "1",
-                            response_type: "a_response_type",
-                        },
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(result).toEqual({
-                    statusCode: 403,
-                    body: JSON.stringify({
-                        message: "Authorization permission denied",
-                        code: "access_denied",
-                        errorSummary: "access_denied: Authorization permission denied",
-                        redirectionUri: "http://123.com",
-                        state: "session-state-value",
-                    }),
-                });
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: access_denied: Authorization permission denied",
-                    expect.any(AccessDeniedError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-
-            it("should return 403 status, access_denied and use record_unavailable errorDescription for error message", async () => {
-                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
-                    ...sessionItem,
-                    authorizationCode: undefined,
-                    sessionData: { errorDescription: "record_unavailable" },
-                } as SessionItem);
-
-                const result = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: {
-                            client_id: "1",
-                            response_type: "a_response_type",
-                        },
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(result).toEqual({
-                    statusCode: 403,
-                    body: JSON.stringify({
-                        message: "record_unavailable",
-                        code: "access_denied",
-                        errorSummary: "access_denied: record_unavailable",
-                        redirectionUri: "http://123.com",
-                        state: "session-state-value",
-                    }),
-                });
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: access_denied: record_unavailable",
-                    expect.any(AccessDeniedError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-
-            it("should return 403 status, access_denied and use record_update_requested errorDescription for error message", async () => {
-                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
-                    ...sessionItem,
-                    authorizationCode: undefined,
-                    sessionData: { errorDescription: "record_update_requested" },
-                } as SessionItem);
-
-                const result = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: {
-                            client_id: "1",
-                            response_type: "a_response_type",
-                        },
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(result).toEqual({
-                    statusCode: 403,
-                    body: JSON.stringify({
-                        message: "record_update_requested",
-                        code: "access_denied",
-                        errorSummary: "access_denied: record_update_requested",
-                        redirectionUri: "http://123.com",
-                        state: "session-state-value",
-                    }),
-                });
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: access_denied: record_update_requested",
-                    expect.any(AccessDeniedError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-
-            it("should return 403 status, access_denied and use default message when errorDescription is empty", async () => {
-                vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
-                    ...sessionItem,
-                    authorizationCode: undefined,
-                    sessionData: { errorDescription: "" },
-                } as SessionItem);
-
-                const result = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: {
-                            client_id: "1",
-                            response_type: "a_response_type",
-                        },
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(result).toEqual({
-                    statusCode: 403,
-                    body: JSON.stringify({
-                        message: "Authorization permission denied",
-                        code: "access_denied",
-                        errorSummary: "access_denied: Authorization permission denied",
-                        redirectionUri: "http://123.com",
-                        state: "session-state-value",
-                    }),
-                });
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: access_denied: Authorization permission denied",
-                    expect.any(AccessDeniedError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-        });
-
-        describe("authorization request has missing attributes", () => {
-            let loggerSpyError: MockInstance;
-            beforeEach(() => {
-                loggerSpyError = vi.spyOn(logger, "error");
-            });
-
-            it("should fail validation when response_type is missing from queryString", async () => {
-                const queryString = {
-                    client_id: "1",
-                } as APIGatewayProxyEventQueryStringParameters;
-
-                const output = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: queryString,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(output.statusCode).toBe(400);
-                expect(output.body).toContain("Session Validation Exception");
-
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: 1019: Session Validation Exception - Missing response_type parameter",
-                    expect.any(SessionValidationError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-            it("should not fail validation when the redirect_uri is missing from queryString", async () => {
-                const queryString = {
-                    client_id: "1",
-                    response_type: "test",
-                } as APIGatewayProxyEventQueryStringParameters;
-
-                const output = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: queryString,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(output.statusCode).toBe(200);
-            });
-            it("should fail validation when the client_id is missing from queryString", async () => {
-                const queryString = {
-                    response_type: "test",
-                } as APIGatewayProxyEventQueryStringParameters;
-
-                const output = await lambdaHandler(
-                    {
-                        body: body,
-                        headers: headers,
-                        queryStringParameters: queryString,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-
-                expect(output.statusCode).toBe(400);
-                expect(output.body).toContain("Session Validation Exception");
-
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: 1019: Session Validation Exception - Missing client_id parameter",
-                    expect.any(SessionValidationError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-        });
-
-        describe("has session present", () => {
-            it("should fail when there is no session-id in the authorization request header", async () => {
-                const loggerSpyError = vi.spyOn(logger, "error");
-                const output = await lambdaHandler(
-                    {
-                        body,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-                expect(output.statusCode).toBe(400);
-                expect(output.body).toContain("Invalid request: Missing session-id header");
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: Invalid request: Missing session-id header",
-                    expect.any(InvalidRequestError),
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-            it("should fail when no existing session is found for the current request", async () => {
-                const loggerSpyError = vi.spyOn(logger, "error");
-                const sessionId = "1";
-                const sessionNotFound = new SessionNotFoundError(sessionId);
-                vi.spyOn(sessionService, "getSession").mockRejectedValueOnce(sessionNotFound);
-
-                const output = await lambdaHandler(
-                    {
-                        body,
-                        headers,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-                expect(output.statusCode).toBe(400);
-                expect(output.body).toContain(`Could not find session item with id: ${sessionId}`);
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: 1029: Could not find session item with id: 1",
-                    sessionNotFound,
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-
-            it("should fail when a server error occurs", async () => {
-                const loggerSpyError = vi.spyOn(logger, "error");
-                const serverError = new ServerError();
-                vi.spyOn(sessionService, "getSession").mockRejectedValueOnce(serverError);
-
-                const output = await lambdaHandler(
-                    {
-                        body,
-                        headers,
-                    } as unknown as APIGatewayProxyEvent,
-                    {} as Context,
-                );
-                expect(output.statusCode).toBe(500);
-                expect(output.body).toContain("Server error");
-                expect(loggerSpyError).toHaveBeenCalledWith(
-                    "Authorization Lambda error occurred: Server error",
-                    serverError,
-                );
-                expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
-            });
-        });
+        expect(output.statusCode).toBe(200);
+        const response = JSON.parse(output.body);
+        expect(response.state.value).toBe("session-state-value");
+        expect(response.redirectionURI).toBe("http://123.com");
+        expect(response.authorizationCode.value).toBe("abc");
+        expect(metricsSpy).toHaveBeenCalledWith("authorization_sent");
+        expect(output.body).not.toBeNull();
+        expect(loggerSpyInfo).toHaveBeenCalledWith("Session found");
+        expect(loggerSpyAppendkeys).toHaveBeenCalledWith({ govuk_signin_journey_id: "1" });
     });
 
-    describe("Authorization handler with the Authorization Request Type feature flag set to IPV", () => {
-        let lambdaHandler: middy.MiddyfiedHandler;
-
+    describe("authorization request returns access_denied", () => {
+        let loggerSpyError: MockInstance;
         beforeEach(() => {
-            process.env.ENV_VAR_AUTHORIZATION_REQUEST_TYPE = "IPV";
-            lambdaHandler = buildLambdaHandler();
+            loggerSpyError = vi.spyOn(logger, "error");
         });
 
-        it("should return 200 with state, redirectUri, and authorizationCode from session when no query parameters provided", async () => {
-            const output = await lambdaHandler(
-                {
-                    body: {},
-                    headers: { "session-id": "1" },
-                    queryStringParameters: null,
-                } as unknown as APIGatewayProxyEvent,
-                {} as Context,
-            );
-
-            expect(output.statusCode).toBe(200);
-            const body = JSON.parse(output.body);
-            expect(body.state.value).toBe("session-state-value");
-            expect(body.redirectionURI).toBe("http://123.com");
-            expect(body.authorizationCode.value).toBe("abc");
-            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent");
-        });
-
-        it("should return 200 with state, redirectUri, and authorizationCode from session even when query parameters are provided", async () => {
-            const output = await lambdaHandler(
-                {
-                    body: {},
-                    headers: { "session-id": "1" },
-                    queryStringParameters: {
-                        client_id: "query-client-id",
-                        redirect_uri: "http://query-url.com",
-                        state: "query-state",
-                    },
-                } as unknown as APIGatewayProxyEvent,
-                {} as Context,
-            );
-
-            expect(output.statusCode).toBe(200);
-            const body = JSON.parse(output.body);
-            expect(body.state.value).toBe("session-state-value");
-            expect(body.redirectionURI).toBe("http://123.com");
-        });
-
-        it("should not call the authorizationRequestValidator's validate function'", async () => {
-            const validateSpy = vi.spyOn(authorizationRequestValidator, "validate");
-
-            await lambdaHandler(
-                {
-                    body: {},
-                    headers: { "session-id": "1" },
-                    queryStringParameters: null,
-                } as unknown as APIGatewayProxyEvent,
-                {} as Context,
-            );
-
-            expect(validateSpy).not.toHaveBeenCalled();
-        });
-
-        it("should return 403 access_denied when the session has no authorization code", async () => {
+        it("returns 403 access_denied when authorizationCode is undefined", async () => {
             vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
                 ...sessionItem,
                 authorizationCode: undefined,
             } as SessionItem);
-
-            const output = await lambdaHandler(
+            const result = await lambdaHandler(
                 {
-                    body: {},
-                    headers: { "session-id": "1" },
-                    queryStringParameters: null,
+                    headers: headers,
                 } as unknown as APIGatewayProxyEvent,
                 {} as Context,
             );
 
-            expect(output.statusCode).toBe(403);
-            expect(output.body).toContain("access_denied");
+            expect(result).toEqual({
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "Authorization permission denied",
+                    code: "access_denied",
+                    errorSummary: "access_denied: Authorization permission denied",
+                    redirectionUri: "http://123.com",
+                    state: "session-state-value",
+                }),
+            });
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: access_denied: Authorization permission denied",
+                expect.any(AccessDeniedError),
+            );
             expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+
+        it("uses sessionData.errorDescription=record_unavailable when set", async () => {
+            vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                ...sessionItem,
+                authorizationCode: undefined,
+                sessionData: { errorDescription: "record_unavailable" },
+            } as SessionItem);
+
+            const result = await lambdaHandler(
+                {
+                    headers: headers,
+                } as unknown as APIGatewayProxyEvent,
+                {} as Context,
+            );
+
+            expect(result).toEqual({
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "record_unavailable",
+                    code: "access_denied",
+                    errorSummary: "access_denied: record_unavailable",
+                    redirectionUri: "http://123.com",
+                    state: "session-state-value",
+                }),
+            });
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: access_denied: record_unavailable",
+                expect.any(AccessDeniedError),
+            );
+            expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+
+        it("uses sessionData.errorDescription=record_update_requested when set", async () => {
+            vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                ...sessionItem,
+                authorizationCode: undefined,
+                sessionData: { errorDescription: "record_update_requested" },
+            } as SessionItem);
+
+            const result = await lambdaHandler(
+                {
+                    headers: headers,
+                } as unknown as APIGatewayProxyEvent,
+                {} as Context,
+            );
+
+            expect(result).toEqual({
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "record_update_requested",
+                    code: "access_denied",
+                    errorSummary: "access_denied: record_update_requested",
+                    redirectionUri: "http://123.com",
+                    state: "session-state-value",
+                }),
+            });
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: access_denied: record_update_requested",
+                expect.any(AccessDeniedError),
+            );
+            expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+
+        it("returns default message when errorDescription is an empty string", async () => {
+            vi.spyOn(sessionService, "getSession").mockResolvedValueOnce({
+                ...sessionItem,
+                authorizationCode: undefined,
+                sessionData: { errorDescription: "" },
+            } as SessionItem);
+
+            const result = await lambdaHandler(
+                {
+                    headers: headers,
+                } as unknown as APIGatewayProxyEvent,
+                {} as Context,
+            );
+
+            expect(result).toEqual({
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "Authorization permission denied",
+                    code: "access_denied",
+                    errorSummary: "access_denied: Authorization permission denied",
+                    redirectionUri: "http://123.com",
+                    state: "session-state-value",
+                }),
+            });
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: access_denied: Authorization permission denied",
+                expect.any(AccessDeniedError),
+            );
+            expect(metricsSpy).toHaveBeenCalledWith("no_authorization_code");
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+    });
+
+    describe("has session present", () => {
+        it("should fail when there is no session-id in the authorization request header", async () => {
+            const loggerSpyError = vi.spyOn(logger, "error");
+            const output = await lambdaHandler({} as unknown as APIGatewayProxyEvent, {} as Context);
+            expect(output.statusCode).toBe(400);
+            expect(output.body).toContain("Invalid request: Missing session-id header");
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: Invalid request: Missing session-id header",
+                expect.any(InvalidRequestError),
+            );
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+        it("should fail when no existing session is found for the current request", async () => {
+            const loggerSpyError = vi.spyOn(logger, "error");
+            const sessionId = "1";
+            const sessionNotFound = new SessionNotFoundError(sessionId);
+            vi.spyOn(sessionService, "getSession").mockRejectedValueOnce(sessionNotFound);
+
+            const output = await lambdaHandler(
+                {
+                    headers,
+                } as unknown as APIGatewayProxyEvent,
+                {} as Context,
+            );
+            expect(output.statusCode).toBe(400);
+            expect(output.body).toContain(`Could not find session item with id: ${sessionId}`);
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: 1029: Could not find session item with id: 1",
+                sessionNotFound,
+            );
+            expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
+        });
+
+        it("should fail when a server error occurs", async () => {
+            const loggerSpyError = vi.spyOn(logger, "error");
+            const serverError = new ServerError();
+            vi.spyOn(sessionService, "getSession").mockRejectedValueOnce(serverError);
+
+            const output = await lambdaHandler(
+                {
+                    headers,
+                } as unknown as APIGatewayProxyEvent,
+                {} as Context,
+            );
+            expect(output.statusCode).toBe(500);
+            expect(output.body).toContain("Server error");
+            expect(loggerSpyError).toHaveBeenCalledWith(
+                "Authorization Lambda error occurred: Server error",
+                serverError,
+            );
             expect(metricsSpy).toHaveBeenCalledWith("authorization_sent", 0);
         });
     });
