@@ -30,7 +30,7 @@ runs:
   using: composite
   steps:
     - name: Pull repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Extract AWS account information
       shell: bash
@@ -56,7 +56,7 @@ runs:
       run: echo "result=arn:aws:serverlessrepo:$AWS_REGION:${{ steps.extract-account-info.outputs.account }}:applications/${{ steps.extract-template-metadata.outputs.applicationName }}" >> $GITHUB_OUTPUT
 
     - name: Assume AWS Role
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
       with:
         role-to-assume: ${{ inputs.roleArn }}
         aws-region: ${{ inputs.awsRegion }}
@@ -97,7 +97,7 @@ runs:
         } >> $GITHUB_OUTPUT
 
     - name: Build SAM application
-      uses: govuk-one-login/github-actions/sam/build-application@87ae1213145261e3837cc38d5b9317422acd95c2
+      uses: govuk-one-login/github-actions/sam/build-application@b5f4f92a0692bf297b08c43745e545e45631f0ee
       with:
         template: ${{ inputs.templateLocation }}
         cache-name: common-oauth-${{ github.head_ref || github.ref_name }}
