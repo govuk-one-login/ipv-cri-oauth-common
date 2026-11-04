@@ -272,10 +272,6 @@ Globals:
       - IsPermissionsBoundaryEnabled
       - !Ref PermissionsBoundaryArn
       - !Ref AWS::NoValue
-    CodeSigningConfigArn: !If
-      - IsCodeSigningEnabled
-      - !Ref LambdaCodeSigningConfigArn
-      - !Ref AWS::NoValue
     Timeout: 30 # seconds
     Tracing: Active
     MemorySize: !FindInMap [EnvConfig, !Ref "Environment", MemorySize]
@@ -317,6 +313,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-SessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -524,6 +524,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-AuthorizationFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -698,6 +702,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-AccessTokenFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -876,6 +884,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-CreateAuthCodeFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1054,6 +1066,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-UpdateSessionDataFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1240,6 +1256,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-RetrieveSessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1410,6 +1430,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-DeleteSessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
