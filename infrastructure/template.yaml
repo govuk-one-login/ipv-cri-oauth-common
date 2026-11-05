@@ -220,6 +220,7 @@ Mappings:
       IPVCoreIssuer: "https://identity.account.gov.uk"
 
 Conditions:
+  IsSpokeVpc: !Equals [!Ref VpcStackNameOverride, spoke-vpc]
   IsDev: !Equals [!Ref Environment, "dev"]
   IsIntegration: !Equals [!Ref Environment, "integration"]
   IsStaging: !Equals [!Ref Environment, "staging"]
@@ -271,10 +272,6 @@ Globals:
       - IsPermissionsBoundaryEnabled
       - !Ref PermissionsBoundaryArn
       - !Ref AWS::NoValue
-    CodeSigningConfigArn: !If
-      - IsCodeSigningEnabled
-      - !Ref LambdaCodeSigningConfigArn
-      - !Ref AWS::NoValue
     Timeout: 30 # seconds
     Tracing: Active
     MemorySize: !FindInMap [EnvConfig, !Ref "Environment", MemorySize]
@@ -316,6 +313,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-SessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -328,12 +329,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-sessionTS"
@@ -516,6 +524,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-AuthorizationFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -531,12 +543,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-authorizationTS"
@@ -683,6 +702,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-AccessTokenFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -695,12 +718,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-access-token-2"
@@ -854,6 +884,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-CreateAuthCodeFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -866,12 +900,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-create-auth-code"
@@ -1025,6 +1066,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-UpdateSessionDataFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1037,12 +1082,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
-              Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-update-session-data"
@@ -1204,6 +1256,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-RetrieveSessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1216,12 +1272,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-retrieve-session"
@@ -1367,6 +1430,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-DeleteSessionFn"
+      CodeSigningConfigArn: !If
+        - IsCodeSigningEnabled
+        - !Ref LambdaCodeSigningConfigArn
+        - !Ref AWS::NoValue
       DeploymentPreference:
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
@@ -1379,12 +1446,19 @@ Resources:
       Runtime: nodejs22.x
       VpcConfig:
         SubnetIds: !If
-          - IsDevPlatformDeploy
+          - IsSpokeVpc
           - [
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
               Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdC",
             ]
-          - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
+          - !If
+            - IsDevPlatformDeploy
+            - [
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdA",
+                Fn::ImportValue: !Sub "${VpcStackNameOverride}-ProtectedSubnetIdB",
+              ]
+            - !Split [",", Fn::ImportValue: !Sub "${VpcStackNameOverride}-PrivateSubnets"]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-deleteSessionFn"
